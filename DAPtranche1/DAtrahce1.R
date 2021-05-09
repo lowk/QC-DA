@@ -400,20 +400,6 @@ pmcplot(terms, 2010:2020, proportion=FALSE)
 ### if have time, I hope to develop spreading power score for nodes based on hsa05022 pathway network
 hsa05022<- pathview(gene.data=ranks2,pathway.id = "hsa05022",species="hsa",limit=list(gene=max(abs(ranks2)), cpd=1))
 
-### pathway analysis using MSigDB database
-all_gene_sets <- gmtPathways("/Users/ydeng/Documents/QCstepOA/CorexpressionNetwork/msigdb.v7.4.entrez.gmt")
-fgsea <- fgsea(pathways = all_gene_sets, stats=ranks, scoreType = "pos", eps = 0.0,minSize=15, maxSize=500)
-
-topPathwaysUp <- fgsea[ES > 0][head(order(pval), n=10), pathway]
-topPathwaysDown <- fgsea[ES < 0][head(order(pval), n=10), pathway]
-topPathways <- c(topPathwaysUp, rev(topPathwaysDown))
-plotGseaTable(all_gene_sets[topPathways], ranks, fgsea,gseaParam=0.1)
-
-### display only independent pathways 
-collapsedPathways <- collapsePathways(fgsea[order(pval)][1:10],all_gene_sets, ranks)
-mainPathways <- fgsea[pathway %in% collapsedPathways$mainPathways][order(-NES), pathway]
-plotGseaTable(all_gene_sets[mainPathways], ranks, fgsea, gseaParam = 0.1)
-
 ### (1) PPI network then incorporate with our expression level in CytoScape
 netProDat <- sigPrTable[,c("EntrezGeneSymbol","EntrezGeneID","log2.fold.change","p.values.of.z.test","mergedColors")]
 string_interaction_cmd <- paste('string protein query taxonID=9606 limit=150 cutoff=0.9 query="',paste(netProDat$EntrezGeneSymbol[1:50], collapse=","),'"',sep="")
@@ -530,6 +516,7 @@ SubLocationOrder = SubLocation2[which(LocId!=""),"Main.location"]
 SubLocationDat = cbind(sigPrTable[-delSigID,],as.matrix(SubLocationOrder))
 colnames(SubLocationDat)[ncol(SubLocationDat)] = "Subcellular location"
 SubLocationTypeR = levels(as.factor(SubLocationDat[,"Subcellular location"]))
+
 ### extract all the sublocation types
 k=1
 SubLocationType=vector()
@@ -543,15 +530,20 @@ for (locationCouter in 1:length(SubLocationTypeR)){
   }
 }
 
-table(SubLocationType)
+SubLocationTypeA = names(table(SubLocationType)) ### all the subtypes included in csv file
+slices <- table(SubLocationType)
+lbls <- names(table(SubLocationType))
+pie(slices, labels = lbls, main="Pie Chart of Sub-cellular locations") ###composition of sublocation
+###construct sublocation genesets: GeneSetSublocation
+GeneSetSublocation=vector(mode="list",length=length(SubLocationTypeA))
+for (subCounter in 1:length(SubLocationTypeA)){
+  GeneSetSublocation[[subCounter]] = SubLocationDat[grep(SubLocationTypeA[subCounter],SubLocationOrder),"EntrezGeneID"]
+} 
 
 Exosomoe = read.table("/Users/ydeng/Documents/QCstepOA/CorexpressionNetwork/exosome.tsv",header=TRUE,sep="\t")$GeneSymbol
 ExosomoeCase = SubLocationDat[SubLocationDat[,"EntrezGeneSymbol"]%in%Exosomoe,"EntrezGeneID"]
-
-###construct enquiry geneset based on subcellular location
-CytosolCase = SubLocationDat[grep("Cytosol",SubLocationOrder),"EntrezGeneID"]
-NucleoliCase = SubLocationDat[grep("Nucleoli",SubLocationOrder),"EntrezGeneID"]
-GeneSetSublocation = list("Cytosol"=CytosolCase,"Nucleoli"=NucleoliCase,"Exosome"=ExosomoeCase) 
+GeneSetSublocation[[length(SubLocationTypeA)+1]] = ExosomoeCase
+names(GeneSetSublocation) = c(SubLocationTypeA,"Exosomoe")
 
 rankPro3 <- as.numeric(SubLocationDat[,"p.values.of.z.test"])
 names(rankPro3) <- SubLocationDat[,"EntrezGeneID"]
@@ -559,10 +551,99 @@ ranks3 <- sort(rankPro3,decreasing=TRUE)
 
 ### subcellular location enrichment test
 fgseaLoca <- fgsea(pathways = GeneSetSublocation, stats=ranks3, scoreType = "pos",minSize=15,maxSize=500)
-plotGseaTable(GeneSetSublocation, ranks3, fgseaLoca, gseaParam = 0.5)### need to change the plot title "Pathway"
-plotEnrichment(GeneSetSublocation[["Cytosol"]],ranks3) + labs(title="Cytosol")  
-plotEnrichment(GeneSetSublocation[["Nucleoli"]],ranks3) + labs(title="Nucleoli")
-plotEnrichment(GeneSetSublocation[["Exosome"]],ranks3) + labs(title="Exosome")
+plotGseaTable(GeneSetSublocation, ranks3, fgseaLoca, gseaParam = 0.3)### need to change the plot title "Pathway"
+plotEnrichment(GeneSetSublocation[["Exosomoe"]],ranks3) + labs(title="Exosome")
+
+### pathway analysis using MSigDB database
+all_gene_sets <- gmtPathways("/Users/ydeng/Documents/QCstepOA/CorexpressionNetwork/msigdb.v7.4.entrez.gmt")
+fgsea <- fgsea(pathways = all_gene_sets, stats=ranks3, scoreType = "pos", eps = 0.0,minSize=15, maxSize=500)
+
+topPathwaysUp <- fgsea[ES > 0][head(order(pval), n=10), pathway]
+topPathwaysDown <- fgsea[ES < 0][head(order(pval), n=10), pathway]
+topPathways <- c(topPathwaysUp, rev(topPathwaysDown))
+plotGseaTable(all_gene_sets[topPathways], ranks3, fgsea,gseaParam=0.1)
+
+### display only independent pathways 
+collapsedPathways <- collapsePathways(fgsea[order(pval)][1:10],all_gene_sets, ranks3)
+mainPathways <- fgsea[pathway %in% collapsedPathways$mainPathways][order(-NES), pathway]
+plotGseaTable(all_gene_sets[mainPathways], ranks3, fgsea, gseaParam = 0.1)
+
+### cell/tissue type enrichment 
+cell.tissue <- read.csv("/Users/ydeng/Documents/QCstepOA/CorexpressionNetwork/normal_tissue.tsv",sep="\t")
+
+### matching sigPrTable to cellType/tissueType
+LocId = vector(mode="integer",length=nrow(sigPrTable))
+delSigID=vector(mode="integer")
+delk=1
+for (geneNameId in 1:nrow(sigPrTable)){
+  if(!any(cell.tissue[,"Gene.name"]== sigPrTable[,"EntrezGeneSymbol"][geneNameId])){LocId[geneNameId]=""
+  delSigID[delk]=geneNameId
+  delk=delk+1}
+  else{LocId[geneNameId] = which(cell.tissue[,"Gene.name"]== sigPrTable[,"EntrezGeneSymbol"][geneNameId])[1]
+  }
+}
+cellTypeOrder = cell.tissue[which(LocId!=""),"Cell.type"]
+cellTypeDat = cbind(sigPrTable[-delSigID,],as.matrix(cellTypeOrder))
+colnames(cellTypeDat)[ncol(cellTypeDat)] = "Cell Type"
+
+tissueTypeOrder = cell.tissue[which(LocId!=""),"Tissue"]
+tissueTypeDat = cbind(sigPrTable[-delSigID,],as.matrix(tissueTypeOrder))
+colnames(tissueTypeDat)[ncol(tissueTypeDat)] = "Tissue Type"
+
+###cellTypeDat and tissueTypeDat: dataframe with information for further enrichment test
+cellTypeF <- cellTypeDat[,"Cell Type"]
+slices <- table(cellTypeF)
+lbls <- names(table(cellTypeF))
+pie(slices, labels = lbls, main="Pie Chart of cell types",radius = 1, cex = 0.3) ###composition of cell types
+
+### extract all the cell types in the tsv: cellType
+cellType = levels(as.factor(cellTypeF))
+
+###construct cellType genesets: CellSet
+CellSet=vector(mode="list",length=length(cellType))
+for (subCounter in 1:length(cellType)){
+  CellSet[[subCounter]] = cellTypeDat[grep(cellType[subCounter],cellTypeOrder),"EntrezGeneID"]
+} 
+names(CellSet) = cellType 
+
+### prepare corresponding p values
+rankPro4 <- as.numeric(cellTypeDat[,"p.values.of.z.test"])
+names(rankPro4) <- cellTypeDat[,"EntrezGeneID"]
+ranks4 <- sort(rankPro4,decreasing=TRUE)
+
+### Cell Type enrichment test
+fgseaCell <- fgsea(pathways = CellSet, stats=ranks4, scoreType = "pos",minSize=15,maxSize=500)
+topPathwaysUp <- fgseaCell[ES > 0][head(order(pval), n=30), pathway]
+topPathwaysDown <- fgseaCell[ES < 0][head(order(pval), n=30), pathway]
+topPathways <- c(topPathwaysUp, rev(topPathwaysDown))
+plotGseaTable(CellSet[topPathways], ranks4, fgseaCell, gseaParam=0.3)
+#plotGseaTable(CellSet, ranks4, fgseaCell, gseaParam = 0.3)### need to change the plot title "Pathway"
+
+### extract all the tissue types
+tissueTypeF <- tissueTypeDat[,"Tissue Type"]
+deleID = which(tissueTypeF=="N/A")
+tissueTypeF <- tissueTypeDat[-deleID,"Tissue Type"]
+tissueType = unique(tissueTypeF)
+slices <- table(tissueType)
+lbls <- names(table(tissueType))
+pie(slices, labels = lbls, main="Pie Chart of tissue types") ###composition of cell types
+
+###construct tissue type genesets: TissueSet
+TissueSet=vector(mode="list",length=length(tissueType))
+for (subCounter in 1:length(tissueType)){
+  TissueSet[[subCounter]] = tissueTypeDat[grep(tissueType[subCounter],tissueTypeOrder),"EntrezGeneID"]
+} 
+names(TissueSet) = tissueType 
+
+### prepare corresponding p values
+rankPro5 <- as.numeric(tissueTypeDat[,"p.values.of.z.test"])
+names(rankPro5) <- tissueTypeDat[,"EntrezGeneID"]
+ranks5 <- sort(rankPro5,decreasing=TRUE)
+
+### Tissue Type enrichment test
+fgseaTissue <- fgsea(pathways = TissueSet, stats=ranks5, scoreType = "pos",minSize=15,maxSize=500)
+plotGseaTable(TissueSet, ranks5, fgseaTissue, gseaParam = 0.2)### need to change the plot title "Pathway"
+### repeated code, write into function when have time.
 
 
 ### upstream analysis
