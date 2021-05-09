@@ -420,7 +420,7 @@ string_interaction_cmd <- paste('string protein query taxonID=9606 limit=150 cut
 commandsGET(string_interaction_cmd)
 
 ###incorporate our correlation modules into network, modul color from WGCNA
-loadTableData(netProDat[,c("EntrezGeneSymbol","log.fold.change","mergedColors")],table.key.column = "display name",data.key.column = "EntrezGeneSymbol")  #default data.frame key is row.names
+loadTableData(netProDat[,c("EntrezGeneSymbol","log2.fold.change","mergedColors")],table.key.column = "display name",data.key.column = "EntrezGeneSymbol")  #default data.frame key is row.names
 ### then in cytoscape "Style-> fill color -> column = merged colors + Mapping type = "Passthrough";" 
 
 ### (2) co-expression network and generic enrichment map in CytoScape
@@ -450,7 +450,7 @@ layoutNetwork('cose',network = as.numeric(current_network_id))
 ### combine our information to nodetable
 loadTableData(netProDat,table.key.column = "name",data.key.column = "EntrezGeneSymbol")  #default data.frame key is row.names
 
-# enrichment analysis in CytoScape. function returns a data frame in the generic EM file format.
+# pathway enrichment analysis in CytoScape. function returns a data frame in the generic EM file format. Work well, still can be good alternative.
 # runGprofiler <- function(genes,current_organism = "hsapiens", 
 #                          significant_only = F, set_size_max = 200, 
 #                          set_size_min = 3, filter_gs_size_min = 5 , exclude_iea = F){
@@ -497,6 +497,7 @@ loadTableData(netProDat,table.key.column = "name",data.key.column = "EntrezGeneS
 # #ereturn the suid of newly created network.
 # em_network_suid <- commandsRun(em_command)
 # renameNetwork("Enrichmentmap", network=as.numeric(em_network_suid))
+
 
 ###sublocation enrichment
 
@@ -548,18 +549,13 @@ plotEnrichment(GeneSetSublocation[["Exosome"]],ranks) + labs(title="Exosome")
 
 
 ### upstream analysis
-upstreamDat = sigPrTable[,c("EntrezGeneSymbol","log2.fold.change","p.values.of.z.test")]
-colnames(upstreamDat) <- c("entrez", "fc", "pvalue") ### name required by the package
-upstreamDat$fc = log(1/2^(as.numeric(upstreamDat$fc))) 
+upstreamDat = sigPrTable[,c("EntrezGeneID","log2.fold.change","p.values.of.z.test")]
+colnames(upstreamDat) <- c("entrez", "fc", "pvalue") ### name required by the package, package require unique gene ID
+upstreamDat$fc = as.numeric(upstreamDat$fc)
 upstreamDat$pvalue = as.numeric(upstreamDat$pvalue)
-uniqueID=vector()
-for (uniqueCouter in 1:length(unique(upstreamDat$entrez))){
-  uniqueID[uniqueCouter] = which(upstreamDat$entrez== unique(upstreamDat$entrez)[uniqueCouter])
-  
-}
-upstreamDatF = cbind(upstreamDat[uniqueID,]) ### package require unique gene ID
-quaternary_results <- RunCRE_HSAStringDB(upstreamDatF, method = "Quaternary",
-                                         fc.thresh = log(1.3), pval.thresh = 0.05/nrow(upstreamDat),
+
+quaternary_results <- RunCRE_HSAStringDB(upstreamDat, method = "Quaternary",
+                                         fc.thresh = log2(1.3), pval.thresh = 0.05,
                                          only.significant.pvalues = TRUE,
                                          significance.level = 0.05,
                                          epsilon = 1e-16, progressBar = FALSE,
