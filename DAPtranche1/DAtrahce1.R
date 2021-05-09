@@ -16,8 +16,14 @@ library(tidyverse)
 library(broom)
 library(umap)
 library(lme4)
+library(enrichplot)
+library(clusterProfiler)
+library(pathview)
+library(DOSE)
+library(igraph)
 
-exprDat_normX = exprDat_norm[which(MetaRaw[,"diseaseGroup"]=="OA"),!grepl("HybControlElution|NonBiotin|None",colnames(exprDat_norm))]
+### extract expression data for OA/Injury group, when extract exprDat_norm from MySoma non human proteins have been excluded
+exprDat_normX = exprDat_norm[which(MetaRaw[,"diseaseGroup"]=="OA"),]
 
 ### Analysis 1.1 How many clusters are there?
 pcStr <- prcomp(log10(as.matrix(exprDat_normX)),scale = TRUE)
@@ -27,7 +33,6 @@ pcDat = pcStr$x[,1:10]
 #   kmeanStr <- kmeans(pcDat, clusterK, iter.max = 50, nstart = 1)
 #   fviz_cluster(kmeanStr, exprDat_normX, ellipse.type = "norm")
 # }
-
 
 # Elbow method
 fviz_nbclust(pcDat, kmeans, method = "wss") +
@@ -99,26 +104,31 @@ fit_glm <- glm(EndoLabel ~ exprDat_normX, family = binomial(link = "logit"),cont
 # car::vif(fit_glm) ### multicolinearity
 
 sigPrInd = vector(mode="integer")
-sigPrP=vector(mode="numeric")
+sigPrPl=vector(mode="numeric")
+sigPrPt=vector(mode="numeric")
 sigPrOR=vector(mode="numeric")
 sigPrLFC=vector(mode="numeric")
-k=1
+
+###apply logistic regression & t test
 for (i in 1:ncol(exprDat_normX)){
   fit_glm <- glm(EndoLabel ~ exprDat_normX[,i], family = binomial(link = "logit"),control=list(maxit=50))
   temp <- summary(fit_glm)[["coefficients"]]
-  Prz <- temp[nrow(temp),ncol(temp)]
+  Prz1 <- temp[nrow(temp),ncol(temp)]
+  Prz2 <-t.test(exprDat_normX[,i][EndoLabel==1],exprDat_normX[,i][EndoLabel==0])$p.value
   # not right now, check how to compare warning message
   # if (warnings()=="glm.fit: fitted probabilities numerically 0 or 1 occurred"){completeProId[i]=i}
-  if (Prz < 0.05/ncol(exprDat_normX)) {sigPrInd[k]=i
-  sigPrP[k]=Prz
-  sigPrOR[k]=exp(temp[nrow(temp),1])
-  sigPrLFC[k]=log(mean(exprDat_normX[which(EndoLabel==1),i])/mean(exprDat_normX[which(EndoLabel==0),i]))
-  k=k+1}
+  sigPrPl[i]=Prz1
+  sigPrPt[i]=Prz2
+  sigPrOR[i]=exp(temp[nrow(temp),1])
+  sigPrLFC[i]=log2(mean(exprDat_normX[which(EndoLabel==1),i])/mean(exprDat_normX[which(EndoLabel==0),i]))
 }
+sigPrP <- p.adjust(sigPrPl,method="BH")
+#sigPrPt <- p.adjust(sigPrPt,method="BH")
+sigPrInd = which(sigPrP<0.05)
 
 ### protein signature for endotype 1, Corresponding p value and odd ratio
-sigPr = cbind(colnames(exprDat_normX)[sigPrInd],sigPrP,sigPrOR,sigPrLFC,EndoLabel[sigPrInd])
-colnames(sigPr) <- c("Protein Signature","p values of z test", "odds ratio","log fold change","Endotype")
+sigPr = cbind(colnames(exprDat_normX)[sigPrInd],sigPrP[sigPrInd],sigPrOR[sigPrInd],sigPrLFC[sigPrInd],EndoLabel[sigPrInd])
+colnames(sigPr) <- c("Protein Signature","p values of z test", "odds ratio","log2 fold change","Endotype")
 sigExp = exprDat_normX[,sigPrInd]
 
 sigProGeneId = vector(mode="integer",length=nrow(sigPr))
@@ -126,31 +136,41 @@ for (sigProCount in 1:nrow(sigPr)){
   sigProGeneId[sigProCount] = which(ColTable[,"Protein Name"]==sigPr[,"Protein Signature"][sigProCount])
 }
 
-###Core talbe here: protein signature table (sigPrTable) & sig protein expression level table(sigExpTable)
 sigPrTable = data.frame(cbind(sigPr,ColTable[sigProGeneId,]))
 sigPrTable <- sigPrTable[which(sigPrTable$EntrezGeneID!=""),] 
 sigExpTableP <- sigExp[,which(sigPrTable$EntrezGeneID!="")]### colnames as RawM
-sigExpTable <- sigExpTableP ### creat a copy, with "database friendly col name"
+sigExpTable <- sigExpTableP ### creat a copy, with "database friendly col name", sigExpTableP could be for reference or check if needed
 colnames(sigExpTable) <- sigPrTable[,"EntrezGeneSymbol"]
+
+### enrichment analysis "duplicate gene names, fgsea may produce unexpected results", we select unique "EntrezGeneSymbol"
+uniPro = unique(sigPrTable[,"EntrezGeneID"])
+uniID = vector(mode="integer",length=length(uniPro)) ### write such transformation into a function, too many places in the code require such operation
+for (uniCounter in 1:length(uniPro)){
+  uniID[uniCounter] = which(sigPrTable[,"EntrezGeneID"]==uniPro[uniCounter])[1]
+}
+
+###Core talbe here: protein signature table (sigPrTable) & sig protein expression level table(sigExpTable)
+sigPrTable = sigPrTable[uniID,]
+sigExpTable = sigExpTable[,uniID]
 
 ### module analysis
 ### simplest 1-step network construction and module detection function
-net = blockwiseModules(sigExpTable, power = 6,
-                       TOMType = "unsigned", minModuleSize = 30, maxBlockSize=6000,
-                       reassignThreshold = 0, mergeCutHeight = 0.25,
-                       numericLabels = TRUE, pamRespectsDendro = FALSE,
-                       saveTOMs = TRUE, verbose = 3)
-
-consMEs = net$MEs; ### eigen genes
-moduleLabels = net$colors;
-moduleColors = labels2colors(moduleLabels)
-consTree = net$dendrograms[[1]];
-plotDendroAndColors(consTree, moduleColors,
-                    "Module colors",
-                    dendroLabels = FALSE, hang = 0.03,
-                    addGuide = TRUE, guideHang = 0.05,
-                    main = "Consensus protein dendrogram and module colors based on euclidean distance")
+# net = blockwiseModules(sigExpTable, power = 6,
+#                        TOMType = "unsigned", minModuleSize = 30, maxBlockSize=6000,
+#                        reassignThreshold = 0, mergeCutHeight = 0.25,
+#                        numericLabels = TRUE, pamRespectsDendro = FALSE,
+#                        saveTOMs = TRUE, verbose = 3)
+# 
+# consMEs = net$MEs; ### eigen genes
+# moduleLabels = net$colors;
+# consTree = net$dendrograms[[1]];
+# plotDendroAndColors(consTree, moduleColors,
+#                     "Module colors",
+#                     dendroLabels = FALSE, hang = 0.03,
+#                     addGuide = TRUE, guideHang = 0.05,
+#                     main = "Consensus protein dendrogram and module colors based on euclidean distance")
 ### 1-step should be enough for our analysis
+
 ### tried regression on eigen genes: some egien genes are perfect enough for the endotype clustering
 endo_glm <- glm(EndoLabel ~ as.matrix(consMEs), family = binomial(link = "logit"),control=list(maxit=50))
 ### no significance can be detected when all eigns are involved. and "glm.fit: fitted probabilities numerically 0 or 1 occurred" reported
@@ -204,7 +224,7 @@ tomTree = hclust(as.dist(dissTOM), method = "average");
 
 # Plot the resulting clustering tree (dendrogram)
 plot(tomTree, xlab="", sub="", main = "Protein expression level clustering on TOM-based dissimilarity",labels = FALSE, hang = 0.04)
-minModuleSize = 30;
+minModuleSize = 50;
 # Module identification using dynamic tree cut:
 dynamicMods = cutreeDynamic(dendro = tomTree, distM = dissTOM,
                             deepSplit = 2, pamRespectsDendro = FALSE,
@@ -245,12 +265,24 @@ abline(h=MEDissThres, col = "red")
 merge = mergeCloseModules(sigExpTable, dynamicColors, cutHeight = MEDissThres, verbose = 3)
 # The merged module colors
 mergedColors = merge$colors
+table(mergedColors)
+# Convert numeric lables into colors
 mergedMEs = merge$newMEs
 plotDendroAndColors(tomTree, mergedColors,
                     "coexpression module",
                     dendroLabels = FALSE, hang = 0.03,
                     addGuide = TRUE, guideHang = 0.05)
 
+### add sigPrTable col of correlation model label (here as color names) 
+sigPrTable <- cbind(sigPrTable,mergedColors)
+
+### EntrezGeneID of proteins: membership in modules. clusterList for further clusterProfiler
+clusterList = list()
+clusterName = levels(as.factor(mergedColors))
+for (clusterCounter in 1:length(clusterName)){
+  clusterList[[clusterCounter]] = sigPrTable[which(mergedColors==clusterName[clusterCounter]),"EntrezGeneID"]
+}
+names(clusterList)=c("X1","X2","X3","X4","X5","X6","X7","X8") ### such naming for compareCluster
 
 ## Tom plot is time consuming (as stated in package tutorial). For reproducibility, we set the random seed, and size =300
 nSelect = 300
@@ -268,29 +300,203 @@ diag(plotDiss) = NA;
 TOMplot(plotDiss, selectTree, selectColors, main = "Network heatmap plot, selected genes (300) OA group")
 ### in my opinion, TOMplot for selected genes says nothing!
 
-### add sigPrTable col of correlation model label (here as color names) 
-sigPrTable <- cbind(sigPrTable,mergedColors)
+### when all the protein involved, too computational expensive in igraph. We visualise in different modules
+colnames(dissTOM) = sigPrTable[,"EntrezGeneSymbol"]
+rownames(dissTOM) = sigPrTable[,"EntrezGeneSymbol"]
+
+###MEDiss eigen protein distance.TOMnet selected proteins.
+igraphMatrix <- graph_from_adjacency_matrix(MEDiss, mode = "undirected", weighted = TRUE,diag = FALSE, add.colnames = NULL, add.rownames = NA)
+
+###node importance scores: degree, betweenness, closeness.
+degNODE <- degree(igraphMatrix, mode="all") 
+betweenNODE<- betweenness(igraphMatrix)
+closeNODE <-closeness(igraphMatrix)
+
+l <- layout.circle(igraphMatrix)
+plot(igraphMatrix,vertex.label=colnames(MEDiss),vertex.label.font=2, vertex.label.color=rgb(0.1,0.7,0.8,0.5),
+     vertex.label.cex=.7, vertex.size=betweenNODE*6, edge.color="gray85")
+
+### top n membership for each MEs
+topN=5
+corMembership = abs(cor(sigExpTable,MEs))
+MEgroup = colnames(corMembership)
+memberME = list()
+dissMember = matrix(0,nrow=nrow(sigExpTable),ncol=topN*length(MEgroup))
+for (group in 0:(length(MEgroup)-1)){
+  memberME[[1+group]] = sort(corMembership[,1+group],decreasing=TRUE)[1:topN]
+  dissMember[,(1+group*topN):(topN+group*topN)] = sigExpTable[,names(memberME[[1+group]])]
+}
+
+memberAdj = abs(cor(dissMember,dissMember))  ###Tom matrix not working well here, so we directly use correlation matrix
+
+igraphMatrixMEM <- graph_from_adjacency_matrix(memberAdj, mode = "undirected", weighted = TRUE,diag = FALSE, add.colnames = NULL, add.rownames = NA)
+degNODE <- degree(igraphMatrixMEM, mode="all") 
+betweenNODE<- betweenness(igraphMatrixMEM)
+closeNODE <-closeness(igraphMatrixMEM)
+vertex.name=vector()
+for(vertexCounter in 1:length(MEgroup)){
+  temp.name=names(memberME[[vertexCounter]])
+  vertex.name=c(vertex.name,temp.name)
+}
+
+plot(igraphMatrixMEM,vertex.label=vertex.name,vertex.label.font=0.5, vertex.label.color="black",
+     vertex.label.cex=.7, vertex.size=betweenNODE/10, edge.color="gray85")
+
 
 ### Analysis 1.3: Bioinformatic characterisation of clusters
-###pathway enrichment
-rankPro <- as.numeric(sigPrTable[,"p.values.of.z.test"])
+
+###pathway enrichment, all using R package.
+rankPro <- as.numeric(sigPrTable[,"log2.fold.change"])
 names(rankPro) <- sigPrTable[,"EntrezGeneID"]
+rankPro2 <- as.numeric(sigPrTable[,"log2.fold.change"]) ### rownames using UniProt, convenient for KEGG identifier transgormation
+names(rankPro2) <- sigPrTable[,"UniPro.ID"]
 ranks <- sort(rankPro,decreasing=TRUE)
+ranks2 <- sort(rankPro2,decreasing=TRUE)
+rankName <- names(ranks)
+rankName2 <-names(ranks2)
+
+### enrichplot package
+### barplot
+enrich1 <- DOSE::enrichDGN(rankName,pvalueCutoff = 0.05,pAdjustMethod = "BH",universe,minGSSize = 10,maxGSSize = 500,qvalueCutoff = 0.2,readable = FALSE)
+barplot(enrich1, showCategory=10)
+enrich2 <- clusterProfiler::gseKEGG(geneList= ranks2,organism= "hsa", nPerm= 10000,minGSSize= 3,maxGSSize=2000,pvalueCutoff = 0.05,pAdjustMethod = "BH",keyType = "uniprot")
+#enrich3 <- clusterProfiler::gseGO(geneList=ranks, ont ="ALL", keyType = "ENTREZID",exponent = 1,nPerm= 10000,minGSSize = 10,maxGSSize = 500,pvalueCutoff = 0.05, verbose = TRUE, OrgDb = 'org.Hs.eg.db',pAdjustMethod = "BH",by="fgsea")
+
+###dotplot
+p1 <- dotplot(enrich1, showCategory=20) + ggtitle("dotplot for DisGeNET")
+p2 <- dotplot(enrich2, showCategory=20) + ggtitle("dotplot for KEGG")
+plot_grid(p1, p2, ncol=2)
+
+enrich11 <- setReadable(enrich1, 'org.Hs.eg.db', 'ENTREZID')
+p3 <- cnetplot(enrich11, foldChange=ranks)
+p33 <- cnetplot(enrich11, categorySize="pvalue", foldChange=ranks)
+p333 <- cnetplot(enrich11, foldChange=ranks, circular = TRUE, colorEdge = TRUE)
+cowplot::plot_grid(p3, p33, p333, ncol=3, labels=LETTERS[1:3], rel_widths=c(.8, .8, 1.2))
+
+p4 <- cnetplot(enrich2, foldChange=ranks)
+p44 <- cnetplot(enrich2, categorySize="pvalue", foldChange=ranks2)
+p444 <- cnetplot(enrich2, foldChange=ranks2, circular = TRUE, colorEdge = TRUE)
+cowplot::plot_grid(p4, p44, p444, ncol=3, labels=LETTERS[1:3], rel_widths=c(.8, .8, 1.2))
+
+emapplot(enrich1, showCategory = 20)
+emapplot(enrich2, showCategory = 20)
+emapplot(enrich2,legend_n=2) 
+emapplot(enrich2,pie="count", pie_scale=1.5, layout="kk")
+
+ridgeplot(enrich2) ###ridge plot for GSEA result
+
+### WGCNA modules based pathway 
+xx <- compareCluster(clusterList, fun = "enrichKEGG", organism="hsa", pvalueCutoff=0.05)
+emapplot(xx)
+# emapplot(xx,legend_n=2) 
+# emapplot(xx,pie="count")
+# emapplot(xx,pie="count", pie_scale=1.5, layout="kk")
+# cowplot::plot_grid(p1, p2, p3, p4, ncol=2, labels=LETTERS[1:4])
+
+### pubmed  
+terms <- enrich2$Description[1:8]
+pmcplot(terms, 2010:2020, proportion=FALSE)
+
+### if have time, I hope to develop spreading power score for nodes based on hsa05022 pathway network
+hsa05022<- pathview(gene.data=ranks2,pathway.id = "hsa05022",species="hsa",limit=list(gene=max(abs(ranks2)), cpd=1))
 
 ### pathway analysis using MSigDB database
 all_gene_sets <- gmtPathways("/Users/ydeng/Documents/QCstepOA/CorexpressionNetwork/msigdb.v7.4.entrez.gmt")
 fgsea <- fgsea(pathways = all_gene_sets, stats=ranks, scoreType = "pos", eps = 0.0,minSize=15, maxSize=500)
-head(fgsea)
 
 topPathwaysUp <- fgsea[ES > 0][head(order(pval), n=10), pathway]
 topPathwaysDown <- fgsea[ES < 0][head(order(pval), n=10), pathway]
 topPathways <- c(topPathwaysUp, rev(topPathwaysDown))
-plotGseaTable(all_gene_sets[topPathways], ranks, fgsea,gseaParam=0.3)
+plotGseaTable(all_gene_sets[topPathways], ranks, fgsea,gseaParam=0.1)
 
 ### display only independent pathways 
 collapsedPathways <- collapsePathways(fgsea[order(pval)][1:10],all_gene_sets, ranks)
 mainPathways <- fgsea[pathway %in% collapsedPathways$mainPathways][order(-NES), pathway]
-plotGseaTable(all_gene_sets[mainPathways], ranks, fgsea, gseaParam = 0.3)
+plotGseaTable(all_gene_sets[mainPathways], ranks, fgsea, gseaParam = 0.1)
+
+### (1) PPI network then incorporate with our expression level in CytoScape
+netProDat <- sigPrTable[,c("EntrezGeneSymbol","EntrezGeneID","log2.fold.change","p.values.of.z.test","mergedColors")]
+string_interaction_cmd <- paste('string protein query taxonID=9606 limit=150 cutoff=0.9 query="',paste(netProDat$EntrezGeneSymbol[1:50], collapse=","),'"',sep="")
+commandsGET(string_interaction_cmd)
+
+###incorporate our correlation modules into network, modul color from WGCNA
+loadTableData(netProDat[,c("EntrezGeneSymbol","log.fold.change","mergedColors")],table.key.column = "display name",data.key.column = "EntrezGeneSymbol")  #default data.frame key is row.names
+### then in cytoscape "Style-> fill color -> column = merged colors + Mapping type = "Passthrough";" 
+
+### (2) co-expression network and generic enrichment map in CytoScape
+sig_cor <- memberAdj  ### correlation matrix use top membershipi proteins correlation module analysis
+colnames(sig_cor) <- vertex.name
+rownames(sig_cor) <- vertex.name
+sig_cor[row(sig_cor) == col(sig_cor)] <- 0 ### diagonal set from 1 to 0 elimnate self correlation
+sig_cor[which(sig_cor<0.8)] <- 0 ### set hard threshold 0.9
+sig_cor <- sig_cor[which(rowSums(sig_cor)!= 0),which(colSums(sig_cor) !=0)] ### remove all 0 protein from correlation matrix
+
+#write out the correlation file
+correlation_filename <- file.path(getwd(),"CorexpressionNetwork","cor_matrix.txt")
+write.table(sig_cor,file = correlation_filename, col.names  = TRUE, row.names = FALSE, sep = "\t", quote=FALSE)
+
+amat_url <- "aMatReader/v1/import"
+amat_params = list(files = list(correlation_filename),delimiter = "TAB",undirected = FALSE,ignoreZeros = TRUE,interactionName = "correlated with",rowNames = FALSE)
+
+### display network based on memberAdj (top proteins regarding to membership)
+response <- cyrestPOST(operation = amat_url,body = amat_params,base.url ="http://localhost:1234")
+
+current_network_id <- response$data["suid"]
+
+current_nodetable_colnames <- getTableColumnNames(table="node",  network =  current_network_id)
+
+layoutNetwork('cose',network = as.numeric(current_network_id))
+
+### combine our information to nodetable
+loadTableData(netProDat,table.key.column = "name",data.key.column = "EntrezGeneSymbol")  #default data.frame key is row.names
+
+# enrichment analysis in CytoScape. function returns a data frame in the generic EM file format.
+# runGprofiler <- function(genes,current_organism = "hsapiens", 
+#                          significant_only = F, set_size_max = 200, 
+#                          set_size_min = 3, filter_gs_size_min = 5 , exclude_iea = F){
+#   
+#   gprofiler_results <- gprofiler(genes ,
+#                                  significant=significant_only,ordered_query = F,
+#                                  exclude_iea=exclude_iea,max_set_size = set_size_max,
+#                                  min_set_size = set_size_min,
+#                                  correction_method = "fdr",
+#                                  organism = current_organism,
+#                                  src_filter = c("GO:BP","REAC"))
+#   
+#   #filter results
+#   gprofiler_results <- gprofiler_results[which(gprofiler_results[,'term.size'] >= 3
+#                                                & gprofiler_results[,'overlap.size'] >= filter_gs_size_min ),]
+#   
+#   # gProfileR returns corrected p-values only.  Set p-value to corrected p-value
+#   if(dim(gprofiler_results)[1] > 0){
+#     em_results <- cbind(gprofiler_results[,
+#                                           c("term.id","term.name","p.value","p.value")], 1,
+#                         gprofiler_results[,"intersection"])
+#     colnames(em_results) <- c("Name","Description", "pvalue","qvalue","phenotype","genes")
+#     
+#     return(em_results)
+#   } else {
+#     return("no gprofiler results for supplied query")
+#   }
+# }
+# 
+# ###Create an enrichment map with the returned g:Profiler results.
+# current_node_table <- getTableColumns(table= "node",network = as.numeric(current_network_id))
+# em_results <- runGprofiler(current_node_table$name)
+# em_results_filename <-file.path(getwd(),"CorexpressionNetwork",paste("gprofiler_cluster_enr_results.txt",sep="_"))
+# write.table(em_results,em_results_filename,col.name=TRUE,sep="\t",row.names=FALSE,quote=FALSE)
+# 
+# #write out the g:Profiler results
+# em_command = paste('enrichmentmap build analysisType="generic" ', 
+#                    'pvalue=',"0.05", 'qvalue=',"0.05",
+#                    'similaritycutoff=',"0.25",
+#                    'coeffecients=',"JACCARD",
+#                    'enrichmentsDataset1=',em_results_filename ,
+#                    sep=" ")
+# 
+# #ereturn the suid of newly created network.
+# em_network_suid <- commandsRun(em_command)
+# renameNetwork("Enrichmentmap", network=as.numeric(em_network_suid))
 
 ###sublocation enrichment
 
@@ -313,7 +519,7 @@ SubLocation2 <- read.csv("subcellular_location.tsv",sep="\t")
 LocId = vector(mode="integer",length=nrow(sigPrTable))
 for (geneNameId in 1:nrow(sigPrTable)){
   if(!any(SubLocation2[,"Gene.name"]== sigPrTable[,"EntrezGeneSymbol"][geneNameId])){LocId[geneNameId]=""}
-  else{LocId[geneNameId] = which(SubLocation2[,"Gene.name"]== sigPrTable[,"EntrezGeneSymbol"][geneNameId])}
+  else{LocId[geneNameId] = which(SubLocation2[,"Gene.name"]== sigPrTable[,"EntrezGeneSymbol"][geneNameId])[1]}
 }
 SubLocationOrder = SubLocation2[which(LocId!=""),"Main.location"]
 SubLocationDat = cbind(sigPrTable[which(LocId!=""),],as.matrix(SubLocationOrder))
@@ -328,105 +534,23 @@ Exosomoe = read.table("/Users/ydeng/Documents/QCstepOA/CorexpressionNetwork/exos
 ExosomoeCase = sigPrTable[sigPrTable[,"EntrezGeneSymbol"]%in%Exosomoe,"EntrezGeneID"]
 GeneSetSublocation = list("Cytosol"=CytosolCase,"Nucleoli"=NucleoliCase,"Exosome"=ExosomoeCase) 
 
+rankPro3 <- as.numeric(sigPrTable[,"p.values.of.z.test"])
+names(rankPro3) <- sigPrTable[,"EntrezGeneID"]
+ranks3 <- sort(rankPro3,decreasing=TRUE)
+
 ### subcellular location enrichment test
-fgseaLoca <- fgsea(pathways = GeneSetSublocation, stats=ranks, scoreType = "pos",minSize=15,maxSize=500)
+fgseaLoca <- fgsea(pathways = GeneSetSublocation, stats=ranks3, scoreType = "pos",minSize=15,maxSize=500)
 ###FDR (Benjamini–Hochberg procedure for adjusted padj)
 plotGseaTable(GeneSetSublocation, ranks, fgseaLoca, gseaParam = 0.5)### need to change the plot title "Pathway"
 plotEnrichment(GeneSetSublocation[["Cytosol"]],ranks) + labs(title="Cytosol")  
 plotEnrichment(GeneSetSublocation[["Nucleoli"]],ranks) + labs(title="Nucleoli")
 plotEnrichment(GeneSetSublocation[["Exosome"]],ranks) + labs(title="Exosome")
 
-### network analysis in cytoscape, including 
-### (1)PPI network incorporate with expression level
-### (2)correlation expression network and generic enrichment map
-
-### (1) PPI network then incorporate with our expression level
-netProDat <- sigPrTable[,c("EntrezGeneSymbol","EntrezGeneID","log.fold.change","p.values.of.z.test","mergedColors")]
-string_interaction_cmd <- paste('string protein query taxonID=9606 limit=150 cutoff=0.9 query="',paste(netProDat$EntrezGeneSymbol[1:50], collapse=","),'"',sep="")
-commandsGET(string_interaction_cmd)
-
-###incorporate our correlation modules into network, modul color from WGCNA
-loadTableData(netProDat[,c("EntrezGeneSymbol","log.fold.change","mergedColors")],table.key.column = "display name",data.key.column = "EntrezGeneSymbol")  #default data.frame key is row.names
-### then in cytoscape "Style-> fill color -> column = merged colors + Mapping type = "Passthrough";" 
-
-### (2) correlation expression network and generic enrichment map
-sig_cor <- dissTOM[1:100,1:100] ### correlation matrix use dissTom from correlation module analysis
-colnames(sig_cor) <- sigPrTable[,"EntrezGeneSymbol"][1:100]
-rownames(sig_cor) <- sigPrTable[,"EntrezGeneSymbol"][1:100]
-# sig_cor[row(sig_cor) == col(sig_cor)] <- 0 ### diagonal set from 1 to 0 elimnate self correlation
-sig_cor[which(sig_cor<0.90)] <- 0 ### set hard threshold 0.9
-sig_cor <- sig_cor[which(rowSums(sig_cor)!= 0),which(colSums(sig_cor) !=0)] ### remove all 0 protein from correlation matrix
-
-#write out the correlation file
-correlation_filename <- file.path(getwd(),"CorexpressionNetwork","cor_matrix.txt")
-write.table(sig_cor,file = correlation_filename, col.names  = TRUE, row.names = FALSE, sep = "\t", quote=FALSE)
-
-amat_url <- "aMatReader/v1/import"
-amat_params = list(files = list(correlation_filename),delimiter = "TAB",undirected = FALSE,ignoreZeros = TRUE,interactionName = "correlated with",rowNames = FALSE)
-
-### display network based on dissTOM
-response <- cyrestPOST(operation = amat_url,body = amat_params,base.url ="http://localhost:1234")
-current_network_id <- response$data["suid"]
-
-current_nodetable_colnames <- getTableColumnNames(table="node",  network =  current_network_id)
-
-layoutNetwork('cose',network = as.numeric(current_network_id))
-
-### combine our information to nodetable
-loadTableData(netProDat,table.key.column = "name",data.key.column = "EntrezGeneSymbol")  #default data.frame key is row.names
-
-# enrichment analysis. function returns a data frame in the generic EM file format.
-runGprofiler <- function(genes,current_organism = "hsapiens", 
-                         significant_only = F, set_size_max = 200, 
-                         set_size_min = 3, filter_gs_size_min = 5 , exclude_iea = F){
-  
-  gprofiler_results <- gprofiler(genes ,
-                                 significant=significant_only,ordered_query = F,
-                                 exclude_iea=exclude_iea,max_set_size = set_size_max,
-                                 min_set_size = set_size_min,
-                                 correction_method = "fdr",
-                                 organism = current_organism,
-                                 src_filter = c("GO:BP","REAC"))
-  
-  #filter results
-  gprofiler_results <- gprofiler_results[which(gprofiler_results[,'term.size'] >= 3
-                                               & gprofiler_results[,'overlap.size'] >= filter_gs_size_min ),]
-  
-  # gProfileR returns corrected p-values only.  Set p-value to corrected p-value
-  if(dim(gprofiler_results)[1] > 0){
-    em_results <- cbind(gprofiler_results[,
-                                          c("term.id","term.name","p.value","p.value")], 1,
-                        gprofiler_results[,"intersection"])
-    colnames(em_results) <- c("Name","Description", "pvalue","qvalue","phenotype","genes")
-    
-    return(em_results)
-  } else {
-    return("no gprofiler results for supplied query")
-  }
-}
-
-###Create an enrichment map with the returned g:Profiler results.
-current_node_table <- getTableColumns(table= "node",network = as.numeric(current_network_id))
-em_results <- runGprofiler(current_node_table$name)
-em_results_filename <-file.path(getwd(),"CorexpressionNetwork",paste("gprofiler_cluster_enr_results.txt",sep="_"))
-write.table(em_results,em_results_filename,col.name=TRUE,sep="\t",row.names=FALSE,quote=FALSE)
-
-#write out the g:Profiler results
-em_command = paste('enrichmentmap build analysisType="generic" ', 
-                   'pvalue=',"0.05", 'qvalue=',"0.05",
-                   'similaritycutoff=',"0.25",
-                   'coeffecients=',"JACCARD",
-                   'enrichmentsDataset1=',em_results_filename ,
-                   sep=" ")
-
-#ereturn the suid of newly created network.
-em_network_suid <- commandsRun(em_command)
-renameNetwork("Enrichmentmap", network=as.numeric(em_network_suid))
 
 ### upstream analysis
-upstreamDat = sigPrTable[,c("EntrezGeneSymbol","log.fold.change","p.values.of.z.test")]
+upstreamDat = sigPrTable[,c("EntrezGeneSymbol","log2.fold.change","p.values.of.z.test")]
 colnames(upstreamDat) <- c("entrez", "fc", "pvalue") ### name required by the package
-upstreamDat$fc = as.numeric(upstreamDat$fc) 
+upstreamDat$fc = log(1/2^(as.numeric(upstreamDat$fc))) 
 upstreamDat$pvalue = as.numeric(upstreamDat$pvalue)
 uniqueID=vector()
 for (uniqueCouter in 1:length(unique(upstreamDat$entrez))){
@@ -435,7 +559,7 @@ for (uniqueCouter in 1:length(unique(upstreamDat$entrez))){
 }
 upstreamDatF = cbind(upstreamDat[uniqueID,]) ### package require unique gene ID
 quaternary_results <- RunCRE_HSAStringDB(upstreamDatF, method = "Quaternary",
-                                         fc.thresh = log(1.3), pval.thresh = 0.05,
+                                         fc.thresh = log(1.3), pval.thresh = 0.05/nrow(upstreamDat),
                                          only.significant.pvalues = TRUE,
                                          significance.level = 0.05,
                                          epsilon = 1e-16, progressBar = FALSE,
