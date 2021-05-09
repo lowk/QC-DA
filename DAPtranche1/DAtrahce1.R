@@ -498,7 +498,6 @@ loadTableData(netProDat,table.key.column = "name",data.key.column = "EntrezGeneS
 # em_network_suid <- commandsRun(em_command)
 # renameNetwork("Enrichmentmap", network=as.numeric(em_network_suid))
 
-
 ###sublocation enrichment
 
 ### retrive sublocation from UniProt using UniProt.ws package
@@ -518,34 +517,52 @@ SubLocation2 <- read.csv("subcellular_location.tsv",sep="\t")
 
 ### match the gene symbol between our sigPrTable and reference subcellular_location.tsv
 LocId = vector(mode="integer",length=nrow(sigPrTable))
+delSigID=vector(mode="integer")
+delk=1
 for (geneNameId in 1:nrow(sigPrTable)){
-  if(!any(SubLocation2[,"Gene.name"]== sigPrTable[,"EntrezGeneSymbol"][geneNameId])){LocId[geneNameId]=""}
-  else{LocId[geneNameId] = which(SubLocation2[,"Gene.name"]== sigPrTable[,"EntrezGeneSymbol"][geneNameId])[1]}
+  if(!any(SubLocation2[,"Gene.name"]== sigPrTable[,"EntrezGeneSymbol"][geneNameId])){LocId[geneNameId]=""
+  delSigID[delk]=geneNameId
+  delk=delk+1}
+  else{LocId[geneNameId] = which(SubLocation2[,"Gene.name"]== sigPrTable[,"EntrezGeneSymbol"][geneNameId])[1]
+  }
 }
 SubLocationOrder = SubLocation2[which(LocId!=""),"Main.location"]
-SubLocationDat = cbind(sigPrTable[which(LocId!=""),],as.matrix(SubLocationOrder))
-colnames(SubLocationDat)[7] = "Subcellular location"
-SubLocationType = levels(as.factor(SubLocationDat[,"Subcellular location"]))
-### consider how to classify multiple location cases
+SubLocationDat = cbind(sigPrTable[-delSigID,],as.matrix(SubLocationOrder))
+colnames(SubLocationDat)[ncol(SubLocationDat)] = "Subcellular location"
+SubLocationTypeR = levels(as.factor(SubLocationDat[,"Subcellular location"]))
+### extract all the sublocation types
+k=1
+SubLocationType=vector()
+for (locationCouter in 1:length(SubLocationTypeR)){
+  templocal = SubLocationTypeR[locationCouter]
+  if(!grepl(";",templocal)){SubLocationType[k]=templocal
+  k=k+1}
+  else{templocal2 <- strsplit(templocal,";")[[1]]
+  for(splitC in 1:length(templocal2)){SubLocationType[k+splitC-1]=templocal2[splitC]}
+  k=k+length(templocal2)
+  }
+}
+
+table(SubLocationType)
+
+Exosomoe = read.table("/Users/ydeng/Documents/QCstepOA/CorexpressionNetwork/exosome.tsv",header=TRUE,sep="\t")$GeneSymbol
+ExosomoeCase = SubLocationDat[SubLocationDat[,"EntrezGeneSymbol"]%in%Exosomoe,"EntrezGeneID"]
 
 ###construct enquiry geneset based on subcellular location
-CytosolCase = sigPrTable[grep("Cytosol",SubLocationOrder),"EntrezGeneID"]
-NucleoliCase = sigPrTable[grep("Nucleoli",SubLocationOrder),"EntrezGeneID"]
-Exosomoe = read.table("/Users/ydeng/Documents/QCstepOA/CorexpressionNetwork/exosome.tsv",header=TRUE,sep="\t")$GeneSymbol
-ExosomoeCase = sigPrTable[sigPrTable[,"EntrezGeneSymbol"]%in%Exosomoe,"EntrezGeneID"]
+CytosolCase = SubLocationDat[grep("Cytosol",SubLocationOrder),"EntrezGeneID"]
+NucleoliCase = SubLocationDat[grep("Nucleoli",SubLocationOrder),"EntrezGeneID"]
 GeneSetSublocation = list("Cytosol"=CytosolCase,"Nucleoli"=NucleoliCase,"Exosome"=ExosomoeCase) 
 
-rankPro3 <- as.numeric(sigPrTable[,"p.values.of.z.test"])
-names(rankPro3) <- sigPrTable[,"EntrezGeneID"]
+rankPro3 <- as.numeric(SubLocationDat[,"p.values.of.z.test"])
+names(rankPro3) <- SubLocationDat[,"EntrezGeneID"]
 ranks3 <- sort(rankPro3,decreasing=TRUE)
 
 ### subcellular location enrichment test
 fgseaLoca <- fgsea(pathways = GeneSetSublocation, stats=ranks3, scoreType = "pos",minSize=15,maxSize=500)
-###FDR (Benjamini–Hochberg procedure for adjusted padj)
-plotGseaTable(GeneSetSublocation, ranks, fgseaLoca, gseaParam = 0.5)### need to change the plot title "Pathway"
-plotEnrichment(GeneSetSublocation[["Cytosol"]],ranks) + labs(title="Cytosol")  
-plotEnrichment(GeneSetSublocation[["Nucleoli"]],ranks) + labs(title="Nucleoli")
-plotEnrichment(GeneSetSublocation[["Exosome"]],ranks) + labs(title="Exosome")
+plotGseaTable(GeneSetSublocation, ranks3, fgseaLoca, gseaParam = 0.5)### need to change the plot title "Pathway"
+plotEnrichment(GeneSetSublocation[["Cytosol"]],ranks3) + labs(title="Cytosol")  
+plotEnrichment(GeneSetSublocation[["Nucleoli"]],ranks3) + labs(title="Nucleoli")
+plotEnrichment(GeneSetSublocation[["Exosome"]],ranks3) + labs(title="Exosome")
 
 
 ### upstream analysis
@@ -555,12 +572,16 @@ upstreamDat$fc = as.numeric(upstreamDat$fc)
 upstreamDat$pvalue = as.numeric(upstreamDat$pvalue)
 
 quaternary_results <- RunCRE_HSAStringDB(upstreamDat, method = "Quaternary",
-                                         fc.thresh = log2(1.3), pval.thresh = 0.05,
+                                         fc.thresh = log2(1.3), pval.thresh = 0.05/nrow(upstreamDat),
                                          only.significant.pvalues = TRUE,
                                          significance.level = 0.05,
                                          epsilon = 1e-16, progressBar = FALSE,
                                          relations = NULL, entities = NULL)
-quaternary_results[1:4, c("uid","symbol","regulation","pvalue")]
+goodPid = which(quaternary_results[,"pvalue"]!=-1 & quaternary_results[,"pvalue"]<0.05/nrow(upstreamDat))
+print(paste(length(goodPid),"significant upstream regulators are found."))
+
+###Top 10 regulators
+quaternary_results[1:10, c("uid","symbol","regulation","pvalue")]
 
 ###Analysis 1.4 Clinical characteristics of endotypes
 ### read in clinical data
