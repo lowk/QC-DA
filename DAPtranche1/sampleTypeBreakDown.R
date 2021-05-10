@@ -34,7 +34,7 @@ length(grep("V10",SampleDat2))
 V10samp = SampleDat2[grep("V10",SampleDat2)]
 
 sampleDat3 = sub("-F-V*","",SampleDat2)
-sampleDat33 = sub("-HT","",sampleDat3)
+sampleDat33 = sub("-HT*","",sampleDat3)
 sampleDat333 = sampleDat33[!grepl("UN|SP",sampleDat33)]
 length(sampleDat333)
 length(unique(sampleDat333)) ### 575 non duplicated sample for longitudinal
