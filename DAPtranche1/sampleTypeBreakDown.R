@@ -27,9 +27,9 @@ length(SampleID2)  ###611
 SampleDat2 = RawM2[,"SampleId"][SampleID]
 length(unique(SampleDat2))  ###611
 length(grep("UN",SampleDat2))
-SampleDat2[grep("UN",SampleDat2)]
+SampleDat2[grep("UN",SampleDat2)] ###18
 length(grep("SP",SampleDat2))
-SampleDat2[grep("SP",SampleDat2)]
+SampleDat2[grep("SP",SampleDat2)] ###18
 
 nonSampleID2 = which(!grepl("STEP",RawM2[,"SampleId"])==TRUE)
 length(nonSampleID2) ### 61
