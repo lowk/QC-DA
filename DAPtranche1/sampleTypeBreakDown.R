@@ -30,6 +30,14 @@ length(grep("UN",SampleDat2))
 SampleDat2[grep("UN",SampleDat2)] ###18
 length(grep("SP",SampleDat2))
 SampleDat2[grep("SP",SampleDat2)] ###18
+length(grep("V10",SampleDat2))
+V10samp = SampleDat2[grep("V10",SampleDat2)]
+
+sampleDat3 = sub("-F-V*","",SampleDat2)
+sampleDat33 = sub("-HT","",sampleDat3)
+sampleDat333 = sampleDat33[!grepl("UN|SP",sampleDat33)]
+length(sampleDat333)
+length(unique(sampleDat333)) ### 575 non duplicated sample for longitudinal
 
 nonSampleID2 = which(!grepl("STEP",RawM2[,"SampleId"])==TRUE)
 length(nonSampleID2) ### 61
@@ -40,6 +48,10 @@ length(which(grepl("UNSP POOL",RawM2[,"SampleId"])==TRUE))
 # OA POOL-HT = 8
 # INJ POOL-H = 7
 # UNSP POOL = 4
+unPoolID = grep("UNSP POOL",nonSampleDat2)
+
+### check whether UNSP POOL the same as ...-F-V1-HT1-UN
+
 
 RawM12SampleType = c(RawM1[,"SampleId"],RawM2[,"SampleId"])
 length(RawM12SampleType) ##1152
