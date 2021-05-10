@@ -26,6 +26,10 @@ SampleID2 = grep("STEP",RawM2[,"SampleId"])
 length(SampleID2)  ###611
 SampleDat2 = RawM2[,"SampleId"][SampleID]
 length(unique(SampleDat2))  ###611
+length(grep("UN",SampleDat2))
+SampleDat2[grep("UN",SampleDat2)]
+length(grep("SP",SampleDat2))
+SampleDat2[grep("SP",SampleDat2)]
 
 nonSampleID2 = which(!grepl("STEP",RawM2[,"SampleId"])==TRUE)
 length(nonSampleID2) ### 61
@@ -37,9 +41,8 @@ length(which(grepl("UNSP POOL",RawM2[,"SampleId"])==TRUE))
 # INJ POOL-H = 7
 # UNSP POOL = 4
 
-### check duplicated step id, may indicate longitudinal sample
 RawM12SampleType = c(RawM1[,"SampleId"],RawM2[,"SampleId"])
 length(RawM12SampleType) ##1152
 STEP = grep("STEP",RawM12SampleType)
 length(STEP) ##1046
-length(unique(STEP)) ###1046
+length(unique(STEP))
