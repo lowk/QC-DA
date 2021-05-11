@@ -36,7 +36,7 @@ V10samp = SampleDat2[grep("V10",SampleDat2)]
 sampleDat3 = sub("-F-V[[:alnum:]]*-HT*","",SampleDat2)### don't forget [] wildcard
 sampleDat33 = sampleDat33[!grepl("UN|SP",sampleDat3)]
 length(sampleDat33)
-length(unique(sampleDat33)) ### 575 non duplicated sample for longitudinal
+length(unique(sampleDat3)) ### 575 non duplicated sample for longitudinal
 
 nonSampleID2 = which(!grepl("STEP",RawM2[,"SampleId"])==TRUE)
 length(nonSampleID2) ### 61
