@@ -36,7 +36,7 @@ V10samp = SampleDat2[grep("V10",SampleDat2)]
 sampleDat3 = sub("-F-V[[:alnum:]]*-HT*","",SampleDat2)### don't forget [] wildcard
 sampleDat33 = sampleDat33[!grepl("UN|SP",sampleDat3)]
 length(sampleDat33)
-length(unique(sampleDat3)) ### 575 non duplicated sample for longitudinal
+length(unique(sampleDat33)) ### 575 non duplicated sample for longitudinal
 
 nonSampleID2 = which(!grepl("STEP",RawM2[,"SampleId"])==TRUE)
 length(nonSampleID2) ### 61
@@ -55,5 +55,9 @@ unPoolID = grep("UNSP POOL",nonSampleDat2)
 RawM12SampleType = c(RawM1[,"SampleId"],RawM2[,"SampleId"])
 length(RawM12SampleType) ##1152
 STEP = grep("STEP",RawM12SampleType)
-length(STEP) ##1046
-length(unique(STEP))
+STEPdat = sub("-F-V[[:alnum:]]*-HT*","",RawM12SampleType[STEP])
+STEPdat2 = sub("-..*","",STEPdat)
+length(STEPdat2) ##1046
+length(unique(STEPdat2))
+### duplicated STEPIDs 
+STEPdat2[duplicated(STEPdat2)] ###64
