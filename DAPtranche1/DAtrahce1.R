@@ -21,6 +21,7 @@ library(clusterProfiler)
 library(pathview)
 library(DOSE)
 library(igraph)
+library(ggvenn)
 
 ### extract expression data for OA/Injury group, when extract exprDat_norm from MySoma non human proteins have been excluded
 exprDat_normX = exprDat_norm[which(MetaRaw[,"diseaseGroup"]=="OA"),]
@@ -126,9 +127,34 @@ sigPrP <- p.adjust(sigPrPl,method="BH")
 #sigPrPt <- p.adjust(sigPrPt,method="BH")
 sigPrInd = which(sigPrP<0.05)
 
+### all protein
+# allPr = cbind(colnames(exprDat_normX),sigPrP,sigPrOR,sigPrLFC)
+# colnames(allPr) <- c("Protein Signature","p values of z test", "odds ratio","log2 fold change")
+# 
+# allProGeneId = vector(mode="integer",length=nrow(sigPr))
+# for (allProCount in 1:nrow(allPr)){
+#   allProGeneId[allProCount] = which(ColTable[,"Protein Name"]==allPr[,"Protein Signature"][allProCount])
+# }
+# 
+# allPrTable = data.frame(cbind(allPr,ColTable[allProGeneId,]))
+# allPrTable <- allPrTable[which(allPrTable$EntrezGeneID!=""),] 
+# allExpTableP <- exprDat_normX[,which(allPrTable$EntrezGeneID!="")]### colnames as RawM
+# allExpTable <- allExpTableP ### creat a copy, with "database friendly col name", sigExpTableP could be for reference or check if needed
+# colnames(allExpTable) <- allPrTable[,"EntrezGeneSymbol"]
+# 
+# uniAll = unique(allPrTable[,"EntrezGeneID"])
+# uniAllID = vector(mode="integer",length=length(uniAll)) ### write such transformation into a function, too many places in the code require such operation
+# for (uniAllCounter in 1:length(uniAll)){
+#   uniAllID[uniAllCounter] = which(allPrTable[,"EntrezGeneID"]==uniAll[uniAllCounter])[1]
+# }
+
+### core table for enrichment analysis: in clude all the proteins.
+# allPrTable = allPrTable[uniAllID,]
+# allExpTable = allExpTable[,uniAllID]
+
 ### protein signature for endotype 1, Corresponding p value and odd ratio
-sigPr = cbind(colnames(exprDat_normX)[sigPrInd],sigPrP[sigPrInd],sigPrOR[sigPrInd],sigPrLFC[sigPrInd],EndoLabel[sigPrInd])
-colnames(sigPr) <- c("Protein Signature","p values of z test", "odds ratio","log2 fold change","Endotype")
+sigPr = cbind(colnames(exprDat_normX)[sigPrInd],sigPrP[sigPrInd],sigPrOR[sigPrInd],sigPrLFC[sigPrInd])
+colnames(sigPr) <- c("Protein Signature","p values of z test", "odds ratio","log2 fold change")
 sigExp = exprDat_normX[,sigPrInd]
 
 sigProGeneId = vector(mode="integer",length=nrow(sigPr))
@@ -278,12 +304,14 @@ sigPrTable <- cbind(sigPrTable,mergedColors)
 
 ### EntrezGeneID of proteins: membership in modules. clusterList for further clusterProfiler
 clusterList = list()
+clusterListID=list()
 clusterName = levels(as.factor(mergedColors))
 for (clusterCounter in 1:length(clusterName)){
   clusterList[[clusterCounter]] = sigPrTable[which(mergedColors==clusterName[clusterCounter]),"EntrezGeneID"]
+  clusterListID[[clusterCounter]] = which(mergedColors==clusterName[clusterCounter])
 }
 names(clusterList)=c("X1","X2","X3","X4","X5","X6","X7","X8") ### such naming for compareCluster
-
+#names(clusterList)=c("X1","X2","X3","X4","X5")
 ## Tom plot is time consuming (as stated in package tutorial). For reproducibility, we set the random seed, and size =300
 nSelect = 300
 set.seed(10);
@@ -297,7 +325,7 @@ selectColors = mergedColors[select];
 # the color palette; setting the diagonal to NA also improves the clarity of the plot
 plotDiss = selectTOM^7;
 diag(plotDiss) = NA;
-TOMplot(plotDiss, selectTree, selectColors, main = "Network heatmap plot, selected genes (300) OA group")
+TOMplot(plotDiss, selectTree, selectColors, main = "Network heatmap plot, selected genes (300) Injury group")
 ### in my opinion, TOMplot for selected genes says nothing!
 
 ### when all the protein involved, too computational expensive in igraph. We visualise in different modules
@@ -313,12 +341,12 @@ betweenNODE<- betweenness(igraphMatrix)
 closeNODE <-closeness(igraphMatrix)
 
 l <- layout.circle(igraphMatrix)
-plot(igraphMatrix,vertex.label=colnames(MEDiss),vertex.label.font=2, vertex.label.color=rgb(0.1,0.7,0.8,0.5),
+plot(igraphMatrix,layout=l,vertex.label=colnames(MEDiss),vertex.label.font=2, vertex.label.color=rgb(0.1,0.7,0.8,0.5),
      vertex.label.cex=.7, vertex.size=betweenNODE*6, edge.color="gray85")
 
 ### top n membership for each MEs
 topN=5
-corMembership = abs(cor(sigExpTable,MEs))
+corMembership = abs(cor(sigExpTable,mergedMEs))
 MEgroup = colnames(corMembership)
 memberME = list()
 dissMember = matrix(0,nrow=nrow(sigExpTable),ncol=topN*length(MEgroup))
@@ -401,9 +429,12 @@ pmcplot(terms, 2010:2020, proportion=FALSE)
 hsa05022<- pathview(gene.data=ranks2,pathway.id = "hsa05022",species="hsa",limit=list(gene=max(abs(ranks2)), cpd=1))
 
 ### (1) PPI network then incorporate with our expression level in CytoScape
-netProDat <- sigPrTable[,c("EntrezGeneSymbol","EntrezGeneID","log2.fold.change","p.values.of.z.test","mergedColors")]
-string_interaction_cmd <- paste('string protein query taxonID=9606 limit=150 cutoff=0.9 query="',paste(netProDat$EntrezGeneSymbol[1:50], collapse=","),'"',sep="")
-commandsGET(string_interaction_cmd)
+### interested in modPro in co-express network. 
+modPro = names(unlist(memberME)) ### top 5 in each module
+modID = which(sigPrTable[,"EntrezGeneSymbol"] %in% modPro)
+netProDat <- sigPrTable[modID,c("EntrezGeneSymbol","EntrezGeneID","log2.fold.change","p.values.of.z.test","mergedColors")]
+string_interaction_cmd <- paste('string protein query taxonID=9606 limit=150 cutoff=0.9 query="',paste(netProDat$EntrezGeneSymbol, collapse=","),'"',sep="")
+response <- commandsGET(string_interaction_cmd)
 
 ###incorporate our correlation modules into network, modul color from WGCNA
 loadTableData(netProDat[,c("EntrezGeneSymbol","log2.fold.change","mergedColors")],table.key.column = "display name",data.key.column = "EntrezGeneSymbol")  #default data.frame key is row.names
@@ -652,7 +683,7 @@ colnames(upstreamDat) <- c("entrez", "fc", "pvalue") ### name required by the pa
 upstreamDat$fc = as.numeric(upstreamDat$fc)
 upstreamDat$pvalue = as.numeric(upstreamDat$pvalue)
 
-quaternary_results <- RunCRE_HSAStringDB(upstreamDat, method = "Quaternary",
+quaternary_resultsINJ <- RunCRE_HSAStringDB(upstreamDat, method = "Quaternary",
                                          fc.thresh = log2(1.3), pval.thresh = 0.05/nrow(upstreamDat),
                                          only.significant.pvalues = TRUE,
                                          significance.level = 0.05,
