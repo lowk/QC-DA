@@ -122,5 +122,5 @@ length(grep("OA",longType))  ###0
 length(grep("Injury",longType) )###3
 
 ### if tranche1 and 2 together, baseline OA 258 + 532 -36 = 754
-### if tranche1 and 2 together, baseline Injury 175 + 72 -28 -3  = 216
+### if tranche1 and 2 together, baseline Injury 175 + 72 -25 -3*2  = 216
 
