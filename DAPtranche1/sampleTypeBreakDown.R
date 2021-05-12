@@ -82,7 +82,7 @@ unPoolID = grep("UNSP POOL",nonSampleDat2)
 RawM12SampleType = c(RawM1[,"SampleId"],RawM2[,"SampleId"])
 length(RawM12SampleType) ##1152
 STEP = grep("STEP",RawM12SampleType)
-#STEPdat = RawM12SampleType[STEP]
+STEPdat = RawM12SampleType[STEP]
 #STEPdat = sub("-F-V[:alnum:]-HT*","",RawM12SampleType[STEP])
 STEPdat2 = sub("-..*","",STEPdat)
 length(STEPdat2) ##1046
@@ -90,10 +90,19 @@ length(unique(STEPdat2))
 ### duplicated STEPIDs 
 longSamp = STEPdat2[duplicated(STEPdat2)] 
 
+duplicatedTimes=vector()
+for (ii in 1:length(longSamp)){
+  duplicatedTimes[ii] = length(grep(longSamp[ii],STEPdat))
+} 
+length(which(duplicatedTimes==3))  ### 6 samples measured 3 times
+duplicated3ID = which(duplicatedTimes==3)
+duplicated3STEP = longSamp[duplicated3ID] ### sample name measured for 3 times 
+
 IDclinic = vector(mode="integer",length=length(longSamp))
 for (longCounter in 1:length(longSamp)){
   IDclinic[longCounter] = grep(longSamp[longCounter],clinicSTEP)
 }
+
 
 longType = clinic$...3[IDclinic]
 ###longitudinal OA
@@ -101,6 +110,15 @@ length(grep("OA",longType))  ###36
 ###longitudinal Injury
 length(grep("Injury",longType) )###28
 
+### extract sample type for duplicated sample of 3 times
+for (longCounter in 1:length(duplicated3STEP)){
+  IDclinic[longCounter] = grep(duplicated3STEP[longCounter],clinicSTEP)[1]
+}
+longType = clinic$...3[IDclinic]
+length(grep("OA",longType))  ###0
+###longitudinal Injury
+length(grep("Injury",longType) )###6
+
 ### if tranche1 and 2 together, baseline OA 258 + 532 -36 = 764
-### if tranche1 and 2 together, baseline Injury 175 + 72 -28 = 219
+### if tranche1 and 2 together, baseline Injury 175 + 72 -28 -6 = 213
 
