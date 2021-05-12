@@ -63,6 +63,7 @@ SampleDat222 = sub("-UN","",SampleDat222)
 length(which(duplicated(SampleDat222)==TRUE)) ###32
 tranche2DupSTEP = which(duplicated(SampleDat222)==TRUE)
 tranche2DupDat = SampleDat222[tranche2DupSTEP]
+length(unique(tranche2DupDat))  ###32 duplicated samples
 
 #IDclinicT2 = vector(mode="list",length=length(tranche2DupDat))
 IDclinicT2 = vector(mode="integer",length=length(tranche2DupDat))
@@ -122,5 +123,5 @@ length(grep("OA",longType))  ###0
 length(grep("Injury",longType) )###3
 
 ### if tranche1 and 2 together, baseline OA 258 + 532 -36 = 754
-### if tranche1 and 2 together, baseline Injury 175 + 72 -25 -3*2  = 216
+### if tranche1 and 2 together, baseline Injury 175 + 72 -25 -3  = 219
 
