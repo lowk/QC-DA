@@ -22,9 +22,13 @@ library(pathview)
 library(DOSE)
 library(igraph)
 library(ggvenn)
+library(MASS)
+library(RColorBrewer)
+library(gplots)
+
 
 ### extract expression data for OA/Injury group, when extract exprDat_norm from MySoma non human proteins have been excluded
-exprDat_normX = exprDat_norm[which(MetaRaw[,"diseaseGroup"]=="OA"),]
+exprDat_normX = exprDat_norm[which(MetaRaw[,"diseaseGroup"]=="Injury"),]
 
 ### Analysis 1.1 How many clusters are there?
 pcStr <- prcomp(log10(as.matrix(exprDat_normX)),scale = TRUE)
@@ -366,10 +370,9 @@ for(vertexCounter in 1:length(MEgroup)){
   temp.name=names(memberME[[vertexCounter]])
   vertex.name=c(vertex.name,temp.name)
 }
-
-plot(igraphMatrixMEM,vertex.label=vertex.name,vertex.label.font=0.5, vertex.label.color="black",
-     vertex.label.cex=.7, vertex.size=betweenNODE/10, edge.color="gray85")
-
+vertex.color = rep(sub("ME","",MEgroup),each=5)
+plot(igraphMatrixMEM, vertex.label=vertex.name, vertex.label.font=0.5, vertex.label.color="black",
+     vertex.label.cex=.7, vertex.size=betweenNODE/4, vertex.color=vertex.color,edge.color="gray85")
 
 ### Analysis 1.3: Bioinformatic characterisation of clusters
 
@@ -436,7 +439,7 @@ netProDat <- sigPrTable[modID,c("EntrezGeneSymbol","EntrezGeneID","log2.fold.cha
 string_interaction_cmd <- paste('string protein query taxonID=9606 limit=150 cutoff=0.9 query="',paste(netProDat$EntrezGeneSymbol, collapse=","),'"',sep="")
 response <- commandsGET(string_interaction_cmd)
 
-###incorporate our correlation modules into network, modul color from WGCNA
+###incorporate our correlation modules into network, module color from WGCNA
 loadTableData(netProDat[,c("EntrezGeneSymbol","log2.fold.change","mergedColors")],table.key.column = "display name",data.key.column = "EntrezGeneSymbol")  #default data.frame key is row.names
 ### then in cytoscape "Style-> fill color -> column = merged colors + Mapping type = "Passthrough";" 
 
@@ -704,6 +707,7 @@ womac_pain_score <- read_excel("/Users/ydeng/Documents/QCstepOA/clinic/STEpUPOA_
 bmi <- read_excel("/Users/ydeng/Documents/QCstepOA/clinic/STEpUPOA_DATA_2021-04-21_0820.xlsx",range="O1:O141", col_names = TRUE)
 cohort <- read_excel("/Users/ydeng/Documents/QCstepOA/clinic/STEpUPOA_DATA_2021-04-21_0820.xlsx",range="D1:D141", col_names = TRUE)
 clinic <- cbind(stepUpID,cohort,age_sex,bmi,kl_grade_worst,womac_pain_score)
+
 ### generate cliniDat: table combined clinic information and proteomics 
 matchStepID = vector(mode="integer",length=length(stepUpID))
 for (StepIDcounter in 1:length(stepUpID)){
@@ -721,14 +725,64 @@ colnames(clinicDat)[ncol(clinicDat)] = "EndoLabel"
 clinicDat$sex <- sub("f",0,clinicDat$sex)
 clinicDat$sex <- sub("m",1,clinicDat$sex)
 clinicDat[,-1] <- apply(clinicDat[,-1],2,as.numeric)
+clinicDat$KLOA <- clinicDat$kl_grade_worst
+clinicDat$KLOA <- apply(as.matrix(clinicDat$KLOA,nrow=1),1,function(x){if(x>2){x=1}
+  else{x=0}})  ### add column wether KLOA
+
 ### apply Generalised Linear Mixed Model
-clinic_glm <- glmer(clinicDat$EndoLabel~ cbind(clinicDat$age,clinicDat$womac_pain_score,clinicDat$kl_grade_worst,clinicDat$bmi_imported)  + (1 | clinicDat$sex) ,family = binomial)
-summary(clinic_glm)
+# clinic_glm <- glmer(clinicDat$EndoLabel~ cbind(clinicDat$age,clinicDat$womac_pain_score,clinicDat$kl_grade_worst,clinicDat$bmi_imported)  + (1 | clinicDat$sex) ,family = binomial)
+# summary(clinic_glm)
+
+sex.endo = table(clinicDat$sex,clinicDat$EndoLabel)
+sex.endoTest <- chisq.test(sex.endo) 
+sex.endoTest.p.value = sex.endoTest$p.value
+
+KLOA.endo = table(clinicDat$KLOA,clinicDat$EndoLabel)
+KLOA.endoTest <- chisq.test(KLOA.endo) 
+KLOA.endoTest.p.value = KLOA.endoTest$p.value
+
+age.endoTest <- glm(clinicDat$EndoLabel ~ clinicDat$age, family = binomial(link = "logit"))
+age.endoTest.p.value <- summary(age.endoTest)[["coefficients"]][2,4]
+
+bim.endoTest <- glm(clinicDat$EndoLabel ~ clinicDat$bmi_imported, family = binomial(link = "logit"))
+bim.endoTest.p.value <-summary(bim.endoTest)[["coefficients"]][2,4]
+
+pain.endoTest <- glm(clinicDat$EndoLabel ~ clinicDat$womac_pain_score, family = binomial(link = "logit"))
+pain.endoTest.p.value <- summary(pain.endoTest)[["coefficients"]][2,4]
+
+normKL = (clinicDat$kl_grade_worst - mean(clinicDat$kl_grade_worst))/sd(clinicDat$kl_grade_worst)
+kl.endoTest <- glm(clinicDat$EndoLabel ~ clinicDat$bmi_imported, family = binomial(link = "logit"))
+kl.endoTest.p.value <- summary(kl.endoTest)[["coefficients"]][2,4]
+
+endoTest = matrix(rep(c(sex.endoTest.p.value, KLOA.endoTest.p.value, age.endoTest.p.value, bim.endoTest.p.value, pain.endoTest.p.value, kl.endoTest.p.value),each = 2),nrow=2)
+colnames(endoTest) = c("sex","KLOA","age","BIM","pain","KL")
+rownames(endoTest) = c("OA","Injury")
+
+my_palette = colorRampPalette(brewer.pal(8, "Blues"))(ncol(endoTest)*nrow(endoTest))
+heatmap.2(endoTest, Colv = NA,col =my_palette,main="p values of clinical features for testing \n association with endotypes test \n among OA and Injury",
+          margins =c(9,12),trace="none",cexRow=2,keysize=1.5,rowsep=c(1,1))
+###RowSideColors=c("green","red")
+
+###add a function here report 80% variation explained PCs
+exp = exprDat_normX[matchSigPrID,][!is.na(clinicDatP$womac_pain_score)&!is.na(clinicDatP$kl_grade_worst)&!is.na(clinicDatP$bmi_imported),]
+pcTemp <- prcomp(log10(as.matrix(exp)),scale = TRUE)
+pcDatTemp = pcTemp$x[,1:10]
+clinicEndo = cbind(pcDatTemp,clinicDat)
+ggpairs(clinicEndo, columns=1:10, aes(color=as.vector(clinicEndo$sex)),
+        diag=list(continuous=wrap("densityDiag",alpha=0.4)),
+        lower=list(continuous = wrap("points",alpha=0.9,size=0.1)),
+        upper = list(continuous = "blank"))
+
+pairs(clinicEndo[,1:5],
+      col =c("green","red")[as.factor(clinicEndo$EndoLabel)],
+      pch = c(5,8)[as.factor(clinicEndo$sex)], cex=0.8,                     
+      main = "sex(shape) overlay with endotype(color) on PCA")
 
 ###Residuals vs Fitted;Normal Q-Q;Scale-Location;Residuals vs Leverage
 model.diag.metrics <- augment(model)
 par(mfrow = c(2, 2))
 plot(model)
+
 
 ###overlay clinical characteristics on PCA and UMAP
 umapX = umap(exprDat_normX)
