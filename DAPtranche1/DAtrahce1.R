@@ -28,11 +28,12 @@ library(gplots)
 
 
 ### extract expression data for OA/Injury group, when extract exprDat_norm from MySoma non human proteins have been excluded
-exprDat_normX = exprDat_norm[which(MetaRaw[,"diseaseGroup"]=="Injury"),]
+exprDat_normX = exprDat_norm[which(MetaRaw[,"diseaseGroup"]=="OA"),]
 
 ### Analysis 1.1 How many clusters are there?
 pcStr <- prcomp(log10(as.matrix(exprDat_normX)),scale = TRUE)
-pcDat = pcStr$x[,1:10]
+topPCn <- which(get_eigenvalue(pcStr)$cumulative.variance.percent>80)[1]
+pcDat = pcStr$x[,1:topPCn]
 
 # for (clusterK in 1:10){
 #   kmeanStr <- kmeans(pcDat, clusterK, iter.max = 50, nstart = 1)
@@ -429,7 +430,7 @@ terms <- enrich2$Description[1:8]
 pmcplot(terms, 2010:2020, proportion=FALSE)
 
 ### if have time, I hope to develop spreading power score for nodes based on hsa05022 pathway network
-hsa05022<- pathview(gene.data=ranks2,pathway.id = "hsa05022",species="hsa",limit=list(gene=max(abs(ranks2)), cpd=1))
+hsa04530<- pathview(gene.data=ranks2,pathway.id = "hsa04530",species="hsa",limit=list(gene=max(abs(ranks2)), cpd=1))
 
 ### (1) PPI network then incorporate with our expression level in CytoScape
 ### interested in modPro in co-express network. 
@@ -438,9 +439,23 @@ modID = which(sigPrTable[,"EntrezGeneSymbol"] %in% modPro)
 netProDat <- sigPrTable[modID,c("EntrezGeneSymbol","EntrezGeneID","log2.fold.change","p.values.of.z.test","mergedColors")]
 string_interaction_cmd <- paste('string protein query taxonID=9606 limit=150 cutoff=0.9 query="',paste(netProDat$EntrezGeneSymbol, collapse=","),'"',sep="")
 response <- commandsGET(string_interaction_cmd)
+loadTableData(netProDat[,c("EntrezGeneSymbol","log2.fold.change","mergedColors")],table.key.column = "display name",data.key.column = "EntrezGeneSymbol")  #default data.frame key is row.names
+
+### amplify betweenness, visualise again in Cytoscape
+current_nodetable_colnames <- getTableColumnNames(table="node", network =  "OA1")
+current_nodetable <- getTableColumns('node', current_nodetable_colnames,network = "OA1")
+current_nodetable2 = as.data.frame(cbind(current_nodetable[,"display name"],current_nodetable[,"BetweennessCentrality"]*3000))
+current_nodetable2[,2] <- as.numeric(current_nodetable2[,2])
+colnames(current_nodetable2) = c("EntrezGeneSymbol2","BetweennessCentrality")
+loadTableData(current_nodetable2,table.key.column = "display name",data.key.column = "EntrezGeneSymbol2")  #default data.frame key is row.names
+
+new.nodes = selectNodes(nodes=as.list(modPro),by.col = "display name",preserve.current.selection = TRUE,network = "OA1")
+selectNodes(nodes=new.nodes)
+commandsPOST('diffusion diffuse') 
+createSubnetwork('selected',subnetwork.name = 'OA2')
 
 ###incorporate our correlation modules into network, module color from WGCNA
-loadTableData(netProDat[,c("EntrezGeneSymbol","log2.fold.change","mergedColors")],table.key.column = "display name",data.key.column = "EntrezGeneSymbol")  #default data.frame key is row.names
+
 ### then in cytoscape "Style-> fill color -> column = merged colors + Mapping type = "Passthrough";" 
 
 ### (2) co-expression network and generic enrichment map in CytoScape
@@ -692,11 +707,13 @@ quaternary_resultsINJ <- RunCRE_HSAStringDB(upstreamDat, method = "Quaternary",
                                          significance.level = 0.05,
                                          epsilon = 1e-16, progressBar = FALSE,
                                          relations = NULL, entities = NULL)
-goodPid = which(quaternary_results[,"pvalue"]!=-1 & quaternary_results[,"pvalue"]<0.05/nrow(upstreamDat))
+goodPid = which(quaternary_resultsINJ[,"pvalue"]!=-1 & quaternary_resultsINJ[,"pvalue"]<0.05/nrow(upstreamDat))
 print(paste(length(goodPid),"significant upstream regulators are found."))
 
 ###Top 10 regulators
-quaternary_results[1:10, c("uid","symbol","regulation","pvalue")]
+quaternary_resultsINJ[1:10, c("uid","symbol","regulation","pvalue")]
+x= list("UP" = which(quaternary_resultsINJ[goodPid,"regulation"]=="up"),"Down" = which(quaternary_resultsINJ[goodPid,"regulation"]=="down"))
+ggvenn(x,fill_color = c("#0073C2FF", "#CD534CFF"),stroke_size = 0.5, set_name_size = 4)
 
 ###Analysis 1.4 Clinical characteristics of endotypes
 ### read in clinical data
@@ -754,7 +771,9 @@ normKL = (clinicDat$kl_grade_worst - mean(clinicDat$kl_grade_worst))/sd(clinicDa
 kl.endoTest <- glm(clinicDat$EndoLabel ~ clinicDat$bmi_imported, family = binomial(link = "logit"))
 kl.endoTest.p.value <- summary(kl.endoTest)[["coefficients"]][2,4]
 
-endoTest = matrix(rep(c(sex.endoTest.p.value, KLOA.endoTest.p.value, age.endoTest.p.value, bim.endoTest.p.value, pain.endoTest.p.value, kl.endoTest.p.value),each = 2),nrow=2)
+pAll=c(sex.endoTest.p.value, KLOA.endoTest.p.value, age.endoTest.p.value, bim.endoTest.p.value, pain.endoTest.p.value, kl.endoTest.p.value)
+# padjAll = p.adjust(pAll,method="BH")
+endoTest = matrix(rep(pAll,each = 2),nrow=2)
 colnames(endoTest) = c("sex","KLOA","age","BIM","pain","KL")
 rownames(endoTest) = c("OA","Injury")
 
@@ -763,33 +782,47 @@ heatmap.2(endoTest, Colv = NA,col =my_palette,main="p values of clinical feature
           margins =c(9,12),trace="none",cexRow=2,keysize=1.5,rowsep=c(1,1))
 ###RowSideColors=c("green","red")
 
-###add a function here report 80% variation explained PCs
-exp = exprDat_normX[matchSigPrID,][!is.na(clinicDatP$womac_pain_score)&!is.na(clinicDatP$kl_grade_worst)&!is.na(clinicDatP$bmi_imported),]
+exp = exprDat_normX[matchSigPrID,][!is.na(clinicDatP$womac_pain_score)&!is.na(clinicDatP$kl_grade_worst)&!is.na(clinicDatP$bmi_imported),sigPrInd]
 pcTemp <- prcomp(log10(as.matrix(exp)),scale = TRUE)
-pcDatTemp = pcTemp$x[,1:10]
+
+### find the first topPCn explain the 80% variance
+topPCn <- which(get_eigenvalue(pcTemp)$cumulative.variance.percent>80)[1]
+pcDatTemp = pcTemp$x[,1:topPCn]
 clinicEndo = cbind(pcDatTemp,clinicDat)
-ggpairs(clinicEndo, columns=1:10, aes(color=as.vector(clinicEndo$sex)),
+
+PCcount = seq(1:(topPCn+5))
+ACVA = get_eigenvalue(pcTemp)$cumulative.variance.percent[1:(topPCn+5)]
+ScreeDat = as.data.frame(cbind(PCcount,ACVA))
+ggplot(ScreeDat,aes(x=PCcount)) + geom_point(y=ACVA,color="darkcyan") + geom_line(aes(y=ACVA, color="cyan"), linetype="dashed") +
+  ggtitle("Variance Explained by PCs") + labs(x = "Principal Component", y ="Proportion of variance explained by PCs(%)", color = "") +
+  theme(legend.position = "none",plot.title=element_text(size=18,hjust=0.5), axis.title=element_text(size = 13)) + 
+  scale_x_continuous(breaks=seq(1,10,1))
+
+ggpairs(clinicEndo, columns=1:topPCn, aes(color=as.vector(clinicEndo$clinicEndo)),
         diag=list(continuous=wrap("densityDiag",alpha=0.4)),
         lower=list(continuous = wrap("points",alpha=0.9,size=0.1)),
         upper = list(continuous = "blank"))
 
-pairs(clinicEndo[,1:5],
+pairs(clinicEndo[,1:topPCn],
       col =c("green","red")[as.factor(clinicEndo$EndoLabel)],
       pch = c(5,8)[as.factor(clinicEndo$sex)], cex=0.8,                     
-      main = "sex(shape) overlay with endotype(color) on PCA")
+      main = "KL defined OA (shape) overlay with endotype(color) on PCA")
 
-###Residuals vs Fitted;Normal Q-Q;Scale-Location;Residuals vs Leverage
-model.diag.metrics <- augment(model)
-par(mfrow = c(2, 2))
-plot(model)
+chisq.test(table(clinicEndo[,"KLOA"],clinicEndo[,"sex"]))$p.value
 
+ggplot(data=clinicEndo,aes(x=as.factor(EndoLabel),y=normKL,color=as.factor(EndoLabel))) +  geom_violin() + geom_boxplot(width=0.1) + 
+  labs(x="Endotype", y="Normalised KL score",color="Endotype") + ggtitle(paste("Normalised KL score distribution within endotypes p =", signif(kl.endoTest.p.value,digits=4))) +
+  theme(plot.title=element_text(size=20,hjust=0.5),legend.title=element_text(size=20),legend.text=element_text(size = 20), axis.title=element_text(size = 20))
 
-###overlay clinical characteristics on PCA and UMAP
-umapX = umap(exprDat_normX)
+###overlay clinical characteristics on UMAP
 
 ###Analysis 2.1 Biomarker of clinical features
 biomarkerFit1 <- lm(pain ~ exprDat_normX + age + sex + cohort)
 biomarkerFit2 <- lm(radiographic  ~ exprDat_normX + age + sex + cohort)
 ###Diagnostic Plots
+###Residuals vs Fitted;Normal Q-Q;Scale-Location;Residuals vs Leverage
+model.diag.metrics <- augment(model)
+par(mfrow = c(2, 2))
+plot(model)
 
 
