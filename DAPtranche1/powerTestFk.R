@@ -18,7 +18,7 @@ FkStatistic <- function(pcDat,thisk){
 
 ### detect covariance structure of our observed data. Using original data is time consuming, we use eigen modules.
 softPower = 6;
-adjacency = adjacency(exprDat_normX, power = softPower)
+adjacency = adjacency(exprDat_norm, power = softPower)
 TOM = TOMsimilarity(adjacency)
 dissTOM = 1-TOM
 minModuleSize = 50;
@@ -30,17 +30,19 @@ dynamicColors = labels2colors(dynamicMods)
 MEList = moduleEigengenes(exprDat_norm, colors = dynamicColors)
 MEs = MEList$eigengenes
 
-# ### use top PCs
-# pcStr <- prcomp(log10(as.matrix(exprDat_norm)),scale = TRUE)
-# topPCn <- which(get_eigenvalue(pcStr)$cumulative.variance.percent>80)[1]
-# pcDat = pcStr$x[,1:topPCn]
+### use top PCs
+pcStr <- prcomp(log10(as.matrix(exprDat_norm)),scale = TRUE)
+topPCn <- which(get_eigenvalue(pcStr)$cumulative.variance.percent>80)[1]
+pcDat = pcStr$x[,1:topPCn]
 
+covInput = MEs ### or pcDat
+covInput = pcDat
 ### gaurantee the covariance strucutre. 
-temp = cor(MEs)
-ftSz = ncol(MEs)
+temp = cor(covInput)
+ftSz = ncol(covInput)
 NUM0.3 = floor(length(which(temp<0.3))/ftSz) ### 42% [0,0.3] 
 NUM0.7 = floor(length(which(temp>0.7))/ftSz) ### 17% [0.7,1], 41% [0.3,0.7],
-NUM0.3_0.7 = ncol(MEs) - NUM0.3 -NUM0.7
+NUM0.3_0.7 = ncol(covInput) - NUM0.3 -NUM0.7
 
 ###construct covariance matrix for simulated data
 SIMcov = matrix(0,nrow=ftSz,ncol=ftSz) ### covariance matrix SIMcov
@@ -64,35 +66,51 @@ for (i in 1:ftSz){
 
 
 ### begin artificial test
-mytestCounter = 300
+mytestCounter = 40
 
-RecCluster = vector(mode="integer",length=mytestCounter)
+RecCluster = vector(mode="integer",length=mytestCounter) ###recommended cluster number by f(k)
+Nb = vector(mode="integer",length=mytestCounter) ### recommended cluster number by Nb
 
 for(testCounter in 1:mytestCounter){
   ###construct different cluster numbers
-  if(testCounter <= mytestCounter/3){
+  if(testCounter <= mytestCounter/4){
     MUSIM = rep(0,ftSz)
     SigmaSIM = diag(1,ftSz,ftSz)
-  }else if(testCounter >mytestCounter/3 & testCounter <2*mytestCounter/3){
-    MUSIM=rep(c(0,0.3),each=floor(ftSz/2))
+  }else if(testCounter >mytestCounter/4 & testCounter <2*mytestCounter/4){
+    MUSIM=rep(c(0,1),length.out=ftSz)
     SigmaSIM=nearPD(SIMcov, conv.tol = 1e-7)$mat
-  }else{MUSIM=rep(c(0,0.3,0.8),each=floor(ftSz/3))
-  SigmaSIM=nearPD(SIMcov, conv.tol = 1e-7)$mat
+  }else if(testCounter >2*mytestCounter/4 & testCounter <3*mytestCounter/4){
+    MUSIM=rep(c(0,1,2),length.out=ftSz)
+    SigmaSIM=nearPD(SIMcov, conv.tol = 1e-7)$mat
+  }else{
+    MUSIM=rep(c(0,1,2,3),length.out=ftSz)
+    SigmaSIM=nearPD(SIMcov, conv.tol = 1e-7)$mat
   }
   
-  X = mvrnorm(nrow(exprDat_norm),mu=MUSIM,Sigma = SigmaSIM)
+  X = mvrnorm(nrow(exprDat_norm),mu=MUSIM,Sigma =SigmaSIM)
+  # X = mvrnorm(nrow(exprDat_normX),mu=rep(c(0,10,100),each=floor(ncol(exprDat_normX)/3)),Sigma = diag(1,ncol(exprDat_normX),ncol(exprDat_normX)))
+  
+  NbCluster <- length(unique(NbClust(data = X ,distance = "euclidean", min.nc = 2, max.nc = 15, 
+                                     method = "kmeans", index = "all", alphaBeale = 0.1)$Best.partition))
   
   fks = vector(mode="numeric",length=5)
   for (myK in 1:5){fks[myK] <-FkStatistic(X,myK)[[1]]}
   
-  if(length(which(fks<0.85))==0){RecCluster [testCounter] = 1
+  if(length(which(fks<0.85))==0){
+    RecCluster [testCounter] = 1
+    Nb[testCounter] = 1
   }else{
     RecCluster[testCounter] = which(fks<0.85)[length(which(fks<0.85))]
+    Nb[testCounter] = NbCluster
   }
 }
+
 
 length(which(RecCluster==1))
 length(which(RecCluster==2))
 length(which(RecCluster==3))
-length(which(RecCluster==4))
 
+length(which(Nb==1))
+length(which(Nb==2))
+length(which(Nb==3))
+length(which(Nb==4))
