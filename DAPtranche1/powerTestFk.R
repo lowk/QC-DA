@@ -32,12 +32,40 @@ for (i in 2:10){
   ss[i]=ss[1]-0.1*(i-1)
 }
 
+### for 1 cluster
+vbet.vin = vector(mode="numeric",length=9)
+TestPower = vector(mode="numeric",length=9)
+
+X=matrix(NA,nrow=smpSz,ncol=topPCn)
+for(k in 1:10){
+  for (i in 1:smpSz){
+    X[i,]=rnorm(ftSz, mean=0, sd=ss[k])
+  }
+  vbet.vin[k]=ss[k]
+
+maxCounter=100
+RecCluster = vector(mode="integer",length=maxCounter)
+for (testCounter in 1:maxCounter){
+  fks = vector(mode="numeric",length=6)
+  for (myK in 1:6){fks[myK] <-FkStatistic(X,myK)[[1]]}
+  
+  if(length(which(fks<0.85))==0){RecCluster[testCounter] = 1
+  }else{
+    RecCluster[testCounter] = which(fks<0.85)[1]
+  }
+}
+
+TestPower[k] = length(which(RecCluster==1))/maxCounter
+}
+
+pairs(X[,1:3])
+
 
 ### for 2 clusters
 vbet.vin = vector(mode="numeric",length=9)
 TestPower = vector(mode="numeric",length=9)
 
-
+X=matrix(NA,nrow=smpSz,ncol=topPCn)
 for(k in 1:9)
 {j=sample(1:smpSz,floor(smpSz/2),replace=FALSE)
 for (i in 1:smpSz){
@@ -66,7 +94,7 @@ for (testCounter in 1:maxCounter){
 
 TestPower[k] = length(which(RecCluster==2))/maxCounter
 }
-
+pairs(X[,1:3],col=cols)
 
 ### for 3 clusters
 mm = vector(mode="numeric",length=10) 
@@ -78,6 +106,7 @@ for (i in 2:10){
   ss[i]=ss[1]-0.1*(i-1)
 }
 
+plot(vbet.vin,TestPower,type="l",col="red",main="Power Analysis (sample size =435)",xlab="Between-cluster to within-cluster variance ratio",ylab="power")
 
 vbet.vin3 = vector(mode="numeric",length=9)
 TestPower3 = vector(mode="numeric",length=9)
@@ -138,7 +167,7 @@ cols=vector()
 cols[j] = "blue"
 cols[-j]="red"
 
-pairs(pcaClus2$x[,1:3],col=cols)
+pairs(X[,1:3],col=cols)
 
 
 pcaClus3 <- prcomp(X,scale = TRUE)
@@ -146,7 +175,7 @@ cols=vector()
 cols[j1] = "blue"
 cols[j2]="red"
 cols[j3]="green"
-pairs(pcaClus3$x[,1:3],col=cols)
+pairs(X[,1:3],col=cols)
 
 ----------------------------------------------------------------------------------------------------------------------------------###different thought
 
