@@ -28,7 +28,8 @@ library(gplots)
 
 
 ### extract expression data for OA/Injury group, when extract exprDat_norm from MySoma non human proteins have been excluded
-exprDat_normX = exprDat_norm[which(MetaRaw[,"diseaseGroup"]=="OA"),]
+exprDat_normX = exprDat_norm[which(MetaRaw[,"diseaseGroup"]=="Injury"),]
+# exprDat_normX = exprDat_norm
 
 ### Analysis 1.1 How many clusters are there?
 pcStr <- prcomp(log10(as.matrix(exprDat_normX)),scale = TRUE)
@@ -54,7 +55,7 @@ fviz_nbclust(pcDat, kmeans, method = "silhouette")+
 # recommended value: nboot= 500 for your analysis.
 # Use verbose = FALSE to hide computing progression.
 set.seed(123)
-fviz_nbclust(pcDat, kmeans, nstart = 25,  method = "gap_stat", nboot = 50)+
+fviz_nbclust(pcDat, kmeans, nstart = 25,  method = "gap_stat", nboot = 100)+
   labs(subtitle = "Gap statistic method")
 
 #f(K) statistics:Nd=10
@@ -128,7 +129,7 @@ for (i in 1:ncol(exprDat_normX)){
   sigPrOR[i]=exp(temp[nrow(temp),1])
   sigPrLFC[i]=log2(mean(exprDat_normX[which(EndoLabel==1),i])/mean(exprDat_normX[which(EndoLabel==0),i]))
 }
-sigPrP <- p.adjust(sigPrPl,method="BH")
+sigPrP <- p.adjust(sigPrPl,method="bonferroni")
 #sigPrPt <- p.adjust(sigPrPt,method="BH")
 sigPrInd = which(sigPrP<0.05)
 
@@ -271,9 +272,9 @@ plotDendroAndColors(tomTree, dynamicColors, "Dynamic Tree Cut",
                     main = "Protein dendrogram and module colors (injury group)")
 
 # Transform dissTOM with a power to make moderately strong connections more visible in the heatmap
-plotTOM = dissTOM^7;
-# Set diagonal to NA for a nicer plot
-diag(plotTOM) = NA;
+# plotTOM = dissTOM^7;
+# # Set diagonal to NA for a nicer plot
+# diag(plotTOM) = NA;
 # Call the plot function
 # TOMplot(plotTOM, tomTree, dynamicColors, main = "Network heatmap plot, all genes")
 
@@ -281,6 +282,26 @@ diag(plotTOM) = NA;
 # Calculate eigengenes
 MEList = moduleEigengenes(sigExpTable, colors = dynamicColors)
 MEs = MEList$eigengenes
+
+### test correlation between coexpression model and endotype
+SigPMeLogit = vector(mode="numeric",length=ncol(MEs))
+SigPTtest = vector(mode="numeric",length=ncol(MEs))
+for (i in 1:ncol(MEs)){
+  fit_glm <- glm(EndoLabel ~ MEs[,i], family = binomial(link = "logit"),control=list(maxit=50))
+  tempLogit <- summary(fit_glm)[["coefficients"]]
+  PmeLogit = temp[nrow(temp),ncol(temp)]
+  PmeTtest = t.test(MEs[,i][EndoLabel==1],MEs[,i][EndoLabel==0])$p.value
+  SigPMeLogit[i]=signif(PmeLogit,digits=3)
+  SigPTtest[i] = signif(PmeTtest,digits=3)
+}
+SigPMeLogitAdj = p.adjust(SigPMeLogit,method="bonferroni")
+SigPTtestAdj = p.adjust(SigPTtest,method="bonferroni")
+ModulName = names(table(dynamicColors))
+MeEndo = rbind(SigPMeLogit,SigPMeLogitAdj,SigPTtest,SigPTtestAdj)
+colnames(MeEndo) = ModulName
+rownames(MeEndo) = c("p(logit)","padj(logit)","p(ttest)","padj(ttest)")
+MeEndo
+
 # Calculate dissimilarity of module eigengenes
 MEDiss = 1-cor(MEs);
 # Cluster module eigengenes
@@ -289,7 +310,7 @@ METree = hclust(as.dist(MEDiss), method = "average");
 plot(METree, main = "Clustering of module proteins",
      xlab = "", sub = "")
 
-MEDissThres = 0.25
+MEDissThres = 0.4 #0.25
 # Plot the cut line into the dendrogram
 abline(h=MEDissThres, col = "red")
 # Call an automatic merging function
@@ -316,6 +337,7 @@ for (clusterCounter in 1:length(clusterName)){
   clusterListID[[clusterCounter]] = which(mergedColors==clusterName[clusterCounter])
 }
 names(clusterList)=c("X1","X2","X3","X4","X5","X6","X7","X8") ### such naming for compareCluster
+#names(clusterList)=c("X1","X2","X3") ### such naming for compareCluster
 #names(clusterList)=c("X1","X2","X3","X4","X5")
 ## Tom plot is time consuming (as stated in package tutorial). For reproducibility, we set the random seed, and size =300
 nSelect = 300
@@ -350,7 +372,7 @@ plot(igraphMatrix,layout=l,vertex.label=colnames(MEDiss),vertex.label.font=2, ve
      vertex.label.cex=.7, vertex.size=betweenNODE*6, edge.color="gray85")
 
 ### top n membership for each MEs
-topN=5
+topN=20
 corMembership = abs(cor(sigExpTable,mergedMEs))
 MEgroup = colnames(corMembership)
 memberME = list()
@@ -373,7 +395,7 @@ for(vertexCounter in 1:length(MEgroup)){
 }
 vertex.color = rep(sub("ME","",MEgroup),each=5)
 plot(igraphMatrixMEM, vertex.label=vertex.name, vertex.label.font=0.5, vertex.label.color="black",
-     vertex.label.cex=.7, vertex.size=betweenNODE/4, vertex.color=vertex.color,edge.color="gray85")
+     vertex.label.cex=.7, vertex.size=betweenNODE/30, vertex.color=vertex.color,edge.color="gray85")
 
 ### Analysis 1.3: Bioinformatic characterisation of clusters
 
@@ -707,12 +729,12 @@ quaternary_resultsINJ <- RunCRE_HSAStringDB(upstreamDat, method = "Quaternary",
                                          significance.level = 0.05,
                                          epsilon = 1e-16, progressBar = FALSE,
                                          relations = NULL, entities = NULL)
-goodPid = which(quaternary_resultsINJ[,"pvalue"]!=-1 & quaternary_resultsINJ[,"pvalue"]<0.05/nrow(upstreamDat))
+goodPid = which(quaternary_resultsINJ[,"pvalue"]!=-1 & quaternary_resultsINJ[,"pvalue"]<0.05/nrow(upstreamDat) & quaternary_resultsINJ[,"symbol"]!="No-Symbol")
 print(paste(length(goodPid),"significant upstream regulators are found."))
 
 ###Top 10 regulators
-quaternary_resultsINJ[1:10, c("uid","symbol","regulation","pvalue")]
-x= list("UP" = which(quaternary_resultsINJ[goodPid,"regulation"]=="up"),"Down" = which(quaternary_resultsINJ[goodPid,"regulation"]=="down"))
+quaternary_resultsINJ[goodPid, c("uid","symbol","regulation","pvalue")][1:5,]
+x= list("UP Regulation" = which(quaternary_resultsINJ[goodPid,"regulation"]=="up"),"Down Regulation" = which(quaternary_resultsINJ[goodPid,"regulation"]=="down"))
 ggvenn(x,fill_color = c("#0073C2FF", "#CD534CFF"),stroke_size = 0.5, set_name_size = 4)
 
 ###Analysis 1.4 Clinical characteristics of endotypes
@@ -725,19 +747,30 @@ bmi <- read_excel("/Users/ydeng/Documents/QCstepOA/clinic/STEpUPOA_DATA_2021-04-
 cohort <- read_excel("/Users/ydeng/Documents/QCstepOA/clinic/STEpUPOA_DATA_2021-04-21_0820.xlsx",range="D1:D141", col_names = TRUE)
 clinic <- cbind(stepUpID,cohort,age_sex,bmi,kl_grade_worst,womac_pain_score)
 
+stepUpID <- as.matrix(read_excel("/Users/ydeng/Documents/QCstepOA/clinic/STEpUPOA_OMBMM_MENTOR_DATA_2021-05-20_1313.xlsx",range="A1:A259", col_names = TRUE))
+age_sex <- read_excel("/Users/ydeng/Documents/QCstepOA/clinic/STEpUPOA_OMBMM_MENTOR_DATA_2021-05-20_1313.xlsx",range="J1:K259", col_names = TRUE)
+kl_grade_worst <- read_excel("/Users/ydeng/Documents/QCstepOA/clinic/STEpUPOA_OMBMM_MENTOR_DATA_2021-05-20_1313.xlsx",range="IF1:IF259", col_names = TRUE)
+womac_pain_score <- read_excel("/Users/ydeng/Documents/QCstepOA/clinic/STEpUPOA_OMBMM_MENTOR_DATA_2021-05-20_1313.xlsx",range="QQ1:QQ259", col_names = TRUE)
+bmi <- read_excel("/Users/ydeng/Documents/QCstepOA/clinic/STEpUPOA_OMBMM_MENTOR_DATA_2021-05-20_1313.xlsx",range="O1:O259", col_names = TRUE)
+cohort <- read_excel("/Users/ydeng/Documents/QCstepOA/clinic/STEpUPOA_OMBMM_MENTOR_DATA_2021-05-20_1313.xlsx",range="D1:D259", col_names = TRUE)
+clinic <- cbind(stepUpID,cohort,age_sex,bmi,kl_grade_worst,womac_pain_score)
+clinic <- cbind(stepUpID,cohort,age_sex,bmi)
+
 ### generate cliniDat: table combined clinic information and proteomics 
 matchStepID = vector(mode="integer",length=length(stepUpID))
 for (StepIDcounter in 1:length(stepUpID)){
-  matchStepID[StepIDcounter] = grep(stepUpID[StepIDcounter],as.matrix(metadata_reord[,"STEpUP Participant Identification Number (PIN)"]))
+  matchStepID[StepIDcounter] = grep(stepUpID[StepIDcounter],as.matrix(metadata_reord[,"STEpUP Participant Identification Number (PIN)"]))[1]
 }
 matchRowName = rownames(MetaRaw)[matchStepID]
 
 matchSigPrID = vector(mode="integer",length=length(matchRowName))
 for (matchSigCounter in 1:length(matchSigPrID)){
-  matchSigPrID[matchSigCounter] = which(rownames(sigExpTable) == matchRowName[matchSigCounter])
+  matchSigPrID[matchSigCounter] = which(rownames(sigExpTable) == matchRowName[matchSigCounter])[1]
 }
 clinicDatP <- cbind(clinic,EndoLabel[matchSigPrID])
 clinicDat <- clinicDatP[!is.na(clinicDatP$womac_pain_score)&!is.na(clinicDatP$kl_grade_worst)&!is.na(clinicDatP$bmi_imported),]
+clinicDat <- clinicDatP[!is.na(clinicDatP$bmi_imported),]
+
 colnames(clinicDat)[ncol(clinicDat)] = "EndoLabel"
 clinicDat$sex <- sub("f",0,clinicDat$sex)
 clinicDat$sex <- sub("m",1,clinicDat$sex)
@@ -768,13 +801,15 @@ pain.endoTest <- glm(clinicDat$EndoLabel ~ clinicDat$womac_pain_score, family = 
 pain.endoTest.p.value <- summary(pain.endoTest)[["coefficients"]][2,4]
 
 normKL = (clinicDat$kl_grade_worst - mean(clinicDat$kl_grade_worst))/sd(clinicDat$kl_grade_worst)
-kl.endoTest <- glm(clinicDat$EndoLabel ~ clinicDat$bmi_imported, family = binomial(link = "logit"))
+kl.endoTest <- glm(clinicDat$EndoLabel ~ normKL, family = binomial(link = "logit"))
 kl.endoTest.p.value <- summary(kl.endoTest)[["coefficients"]][2,4]
 
 pAll=c(sex.endoTest.p.value, KLOA.endoTest.p.value, age.endoTest.p.value, bim.endoTest.p.value, pain.endoTest.p.value, kl.endoTest.p.value)
-# padjAll = p.adjust(pAll,method="BH")
+#pAll=c(sex.endoTest.p.value,age.endoTest.p.value, bim.endoTest.p.value)
+pAll = p.adjust(pAll,method="bonferroni")
 endoTest = matrix(rep(pAll,each = 2),nrow=2)
 colnames(endoTest) = c("sex","KLOA","age","BIM","pain","KL")
+#colnames(endoTest) = c("sex","age","BIM")
 rownames(endoTest) = c("OA","Injury")
 
 my_palette = colorRampPalette(brewer.pal(8, "Blues"))(ncol(endoTest)*nrow(endoTest))
