@@ -33,17 +33,18 @@ for (i in 2:10){
 }
 
 ### for 1 cluster
-vbet.vin = vector(mode="numeric",length=9)
-TestPower = vector(mode="numeric",length=9)
+vbet.vin1 = vector(mode="numeric",length=9)
+TestPower1 = vector(mode="numeric",length=9)
+wrong1= vector(mode="numeric",length=9)
 
 X=matrix(NA,nrow=smpSz,ncol=topPCn)
 for(k in 1:10){
   for (i in 1:smpSz){
     X[i,]=rnorm(ftSz, mean=0, sd=ss[k])
   }
-  vbet.vin[k]=ss[k]
+  vbet.vin1[k]=ss[k]
 
-maxCounter=100
+maxCounter=10
 RecCluster = vector(mode="integer",length=maxCounter)
 for (testCounter in 1:maxCounter){
   fks = vector(mode="numeric",length=6)
@@ -55,15 +56,15 @@ for (testCounter in 1:maxCounter){
   }
 }
 
-TestPower[k] = length(which(RecCluster==1))/maxCounter
+TestPower1[k] = length(which(RecCluster==1))/maxCounter
+wrong1[k] = length(which(RecCluster!=1))/maxCounter
 }
-
-pairs(X[,1:3])
 
 
 ### for 2 clusters
-vbet.vin = vector(mode="numeric",length=9)
-TestPower = vector(mode="numeric",length=9)
+vbet.vin2 = vector(mode="numeric",length=9)
+TestPower2 = vector(mode="numeric",length=9)
+wrong2 = vector(mode="numeric",length=9)
 
 X=matrix(NA,nrow=smpSz,ncol=topPCn)
 for(k in 1:9)
@@ -78,9 +79,9 @@ cen2 = apply(X[-j,],2,mean)
 vbet = sqrt(apply(as.matrix((cen1-cen2)^2),2,sum))/2
 vin = (sum(sqrt(apply((apply(X[j,],1,function(x){(x-cen1)^2})),2,sum))) + 
          sum(sqrt(apply((apply(X[-j,],1,function(x){(x-cen2)^2})),2,sum))))/nrow(X)
-vbet.vin[k] = vbet/vin
+vbet.vin2[k] = vbet/vin
 
-maxCounter=100
+maxCounter=10
 RecCluster = vector(mode="integer",length=maxCounter)
 for (testCounter in 1:maxCounter){
   fks = vector(mode="numeric",length=6)
@@ -92,9 +93,10 @@ for (testCounter in 1:maxCounter){
   }
 }
 
-TestPower[k] = length(which(RecCluster==2))/maxCounter
+TestPower2[k] = length(which(RecCluster==2))/maxCounter
+wrong2[k] = length(which(RecCluster==1))/maxCounter
 }
-pairs(X[,1:3],col=cols)
+pairs(X[,1:3])
 
 ### for 3 clusters
 mm = vector(mode="numeric",length=10) 
@@ -106,10 +108,10 @@ for (i in 2:10){
   ss[i]=ss[1]-0.1*(i-1)
 }
 
-plot(vbet.vin,TestPower,type="l",col="red",main="Power Analysis (sample size =435)",xlab="Between-cluster to within-cluster variance ratio",ylab="power")
 
 vbet.vin3 = vector(mode="numeric",length=9)
 TestPower3 = vector(mode="numeric",length=9)
+wrong3 = vector(mode="numeric",length=9)
 j1 = vector(mode="integer")
 j2= vector(mode="integer")
 j3= vector(mode="integer")
@@ -139,7 +141,7 @@ vin = (sum(sqrt(apply((apply(X[j1,],1,function(x){(x-cen1)^2})),2,sum))) +
          sum(sqrt(apply((apply(X[j3,],1,function(x){(x-cen3)^2})),2,sum))))/nrow(X)
 vbet.vin3[k] = vbet/vin
 
-maxCounter=100
+maxCounter=10
 RecCluster = vector(mode="integer",length=maxCounter)
 
 for (testCounter in 1:maxCounter){
@@ -153,127 +155,26 @@ for (testCounter in 1:maxCounter){
 }
 
 TestPower3[k] = length(which(RecCluster==3))/maxCounter
+wrong3[k] = length(which(RecCluster==1))/maxCounter
 }
 
 
-plot(vbet.vin,TestPower,type="l",col="red",main="Power Analysis (sample size =435)",xlab="Between-cluster to within-cluster variance ratio",ylab="power")
+plot(vbet.vin2[1:9],TestPower2[1:9],type="l",col="red",main="Power Analysis (sample size =)",xlab="Between-cluster to within-cluster variance ratio",ylab="power")
 lines(vbet.vin3,TestPower3,type="l",col="blue")
+lines(vbet.vin1,TestPower1,type="l",col="green")
 abline(h = 0.8,lty=2 )
-legend("bottomright", legend=c("ground truth: 2 clusters", "ground truth: 3 clusters"),
-       col=c("red", "blue"), lty=1:1, cex=0.8)
+legend("bottomright", legend=c("ground truth: 1 clusters", "ground truth: 2 clusters","ground truth: 3 clusters"),
+       col=c("red", "blue","green"), lty=1:1, cex=0.8)
 
-pcaClus2 <- prcomp(X,scale = TRUE)
 cols=vector()
 cols[j] = "blue"
 cols[-j]="red"
 
-pairs(X[,1:3],col=cols)
+pairs(pcaClus2$x[,1:3],col=cols)
 
 
-pcaClus3 <- prcomp(X,scale = TRUE)
 cols=vector()
 cols[j1] = "blue"
 cols[j2]="red"
 cols[j3]="green"
-pairs(X[,1:3],col=cols)
-
-----------------------------------------------------------------------------------------------------------------------------------###different thought
-
-### detect covariance structure of our observed data. Using original data is time consuming, we use eigen modules.
-softPower = 6;
-adjacency = adjacency(exprDat_norm, power = softPower)
-TOM = TOMsimilarity(adjacency)
-dissTOM = 1-TOM
-minModuleSize = 50;
-tomTree = hclust(as.dist(dissTOM), method = "average");
-dynamicMods = cutreeDynamic(dendro = tomTree, distM = dissTOM,
-                            deepSplit = 2, pamRespectsDendro = FALSE,
-                            minClusterSize = minModuleSize)
-dynamicColors = labels2colors(dynamicMods)
-MEList = moduleEigengenes(exprDat_norm, colors = dynamicColors)
-MEs = MEList$eigengenes
-
-### use top PCs
-pcStr <- prcomp(log10(as.matrix(exprDat_norm)),scale = TRUE)
-topPCn <- which(get_eigenvalue(pcStr)$cumulative.variance.percent>80)[1]
-pcDat = pcStr$x[,1:topPCn]
-
-covInput = MEs ### or pcDat
-covInput = pcDat
-### gaurantee the covariance strucutre. 
-temp = cor(covInput)
-ftSz = ncol(covInput)
-NUM0.3 = floor(length(which(temp<0.3))/ftSz) ### 42% [0,0.3] 
-NUM0.7 = floor(length(which(temp>0.7))/ftSz) ### 17% [0.7,1], 41% [0.3,0.7],
-NUM0.3_0.7 = ncol(covInput) - NUM0.3 -NUM0.7
-
-###construct covariance matrix for simulated data
-SIMcov = matrix(0,nrow=ftSz,ncol=ftSz) ### covariance matrix SIMcov
-for (i in 1:ftSz){
-  for(j in 1:ftSz){
-    if(i<j){
-      randP = sample(1:ftSz,1) ### guarantee the propotion of 0.3,0.7,...
-      if(randP<=NUM0.3){randV = runif(1,min=0,max=0.3)}
-      else if(randP > NUM0.3 & randP <= NUM0.7) {randV = runif(1,min=0.31,max=0.7)}
-      else{randV = runif(1,min=0.71,max=1)}
-      SIMcov[i,j]=randV}
-  }
-}
-
-for (i in 1:ftSz){
-  for(j in 1:ftSz){
-    if(i==j){SIMcov[i,j]=1}
-    if(i>j){SIMcov[i,j]=SIMcov[j,i]}
-  }}
-# SIMcov is the empricially matching covariance matrix
-
-
-### begin artificial test
-mytestCounter = 40
-
-RecCluster = vector(mode="integer",length=mytestCounter) ###recommended cluster number by f(k)
-Nb = vector(mode="integer",length=mytestCounter) ### recommended cluster number by Nb
-
-for(testCounter in 1:mytestCounter){
-  ###construct different cluster numbers
-  if(testCounter <= mytestCounter/4){
-    MUSIM = rep(0,ftSz)
-    SigmaSIM = diag(1,ftSz,ftSz)
-  }else if(testCounter >mytestCounter/4 & testCounter <2*mytestCounter/4){
-    MUSIM=rep(c(0,1),length.out=ftSz)
-    SigmaSIM=nearPD(SIMcov, conv.tol = 1e-7)$mat
-  }else if(testCounter >2*mytestCounter/4 & testCounter <3*mytestCounter/4){
-    MUSIM=rep(c(0,1,2),length.out=ftSz)
-    SigmaSIM=nearPD(SIMcov, conv.tol = 1e-7)$mat
-  }else{
-    MUSIM=rep(c(0,1,2,3),length.out=ftSz)
-    SigmaSIM=nearPD(SIMcov, conv.tol = 1e-7)$mat
-  }
-  
-  X = mvrnorm(nrow(exprDat_norm),mu=MUSIM,Sigma =SigmaSIM)
-  # X = mvrnorm(nrow(exprDat_normX),mu=rep(c(0,10,100),each=floor(ncol(exprDat_normX)/3)),Sigma = diag(1,ncol(exprDat_normX),ncol(exprDat_normX)))
-  
-  NbCluster <- length(unique(NbClust(data = X ,distance = "euclidean", min.nc = 2, max.nc = 15, 
-                                     method = "kmeans", index = "all", alphaBeale = 0.1)$Best.partition))
-  
-  fks = vector(mode="numeric",length=5)
-  for (myK in 1:5){fks[myK] <-FkStatistic(X,myK)[[1]]}
-  
-  if(length(which(fks<0.85))==0){
-    RecCluster [testCounter] = 1
-    Nb[testCounter] = 1
-  }else{
-    RecCluster[testCounter] = which(fks<0.85)[length(which(fks<0.85))]
-    Nb[testCounter] = NbCluster
-  }
-}
-
-
-length(which(RecCluster==1))
-length(which(RecCluster==2))
-length(which(RecCluster==3))
-
-length(which(Nb==1))
-length(which(Nb==2))
-length(which(Nb==3))
-length(which(Nb==4))
+pairs(pcaClus3$x[,1:3],col=cols)
