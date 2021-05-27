@@ -185,7 +185,8 @@ for (uniCounter in 1:length(uniPro)){
 sigPrTable = sigPrTable[uniID,]
 sigExpTable = sigExpTable[,uniID]
 
-### module analysis
+### module analysis. ??? WGCNA, cophenetic correlation coefficient testify the coexpression modules? If for comparison between OA and Injury, or different groups, current code is fine, 
+### but if how many coexpression module best describe the coexpression strucuture, cophenetic coefficient testify may be required. ???
 ### simplest 1-step network construction and module detection function
 # net = blockwiseModules(sigExpTable, power = 6,
 #                        TOMType = "unsigned", minModuleSize = 30, maxBlockSize=6000,
