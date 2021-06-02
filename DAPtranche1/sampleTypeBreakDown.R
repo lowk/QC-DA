@@ -16,7 +16,8 @@ length(which(grepl("INJ POOL-HT",RawM1[,"SampleId"])==TRUE))
 SampleID1 = grep("STEP",RawM1[,"SampleId"])
 length(SampleID1)  ###435
 SampleDat1 = RawM1[,"SampleId"][SampleID1]
-SampleDat11 = sub("-F-V[[:alnum:]]*-HT*","",SampleDat1)
+SampleDat11 = sub("-F.*","",SampleDat1)
+SampleDat11[78] = "STEP1409"
 length(which(duplicated(SampleDat11)==TRUE))  ###no duplicated samples
 
 ## Tranche2 sample type breakdown
