@@ -108,20 +108,22 @@ mm = MMSSm2(1,10)[[1]]
 ss = MMSSm2(1,10)[[2]]
 varianceType=10
 
+### generate simulated dataset X. 
 for(k in 1:varianceType-1)
-{j=sample(1:smpSz,floor(smpSz/2),replace=FALSE)
-tt=sample(1:ftSz,floor(ftSz/2),replace=FALSE)
+{j=sample(1:smpSz,floor(smpSz/2),replace=FALSE) ### setting which sample is 1 or 2
+tt=sample(1:ftSz,floor(ftSz/2),replace=FALSE)  ### setting which feature have mean + tt or mean - tt
+
 for (i in 1:smpSz){
   if(i %in% j){
     for (colI in 1:ftSz){
-      if(colI %in% tt){X[i,colI]=rnorm(1, mean=mm[1]+0.1*tt, sd=ss[1])}
-      else{X[i,colI]=rnorm(1, mean=mm[1]-0.1*tt, sd=ss[1])}
+      if(colI %in% tt){X[i,colI]=rnorm(1, mean=mm[1]+0.1*colI, sd=ss[1])}
+      else{X[i,colI]=rnorm(1, mean=mm[1]-0.1*colI, sd=ss[1])}
     }
   trueLabel[i]=1}
   else{
     for (colI in 1:ftSz){
-      if(colI %in% tt){X[i,colI]=rnorm(1, mean=mm[k+1]+0.1*tt, sd=ss[k+1])}
-      else{X[i,colI]=rnorm(1, mean=mm[k+1]-0.1*tt, sd=ss[k+1])}
+      if(colI %in% tt){X[i,colI]=rnorm(1, mean=mm[k+1]+0.1*colI, sd=ss[k+1])}
+      else{X[i,colI]=rnorm(1, mean=mm[k+1]-0.1*colI, sd=ss[k+1])}
     }
   trueLabel[i]=2}
 }
