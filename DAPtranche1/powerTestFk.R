@@ -110,10 +110,19 @@ varianceType=10
 
 for(k in 1:varianceType-1)
 {j=sample(1:smpSz,floor(smpSz/2),replace=FALSE)
+tt=sample(1:ftSz,floor(ftSz/2),replace=FALSE)
 for (i in 1:smpSz){
-  if(i %in% j){X[i,]=rnorm(ftSz, mean=mm[1], sd=ss[1])
+  if(i %in% j){
+    for (colI in 1:ftSz){
+      if(colI %in% tt){X[i,colI]=rnorm(1, mean=mm[1]+0.1*tt, sd=ss[1])}
+      else{X[i,colI]=rnorm(1, mean=mm[1]-0.1*tt, sd=ss[1])}
+    }
   trueLabel[i]=1}
-  else{X[i,]=rnorm(ftSz, mean=mm[k+1], sd=ss[k+1])
+  else{
+    for (colI in 1:ftSz){
+      if(colI %in% tt){X[i,colI]=rnorm(1, mean=mm[k+1]+0.1*tt, sd=ss[k+1])}
+      else{X[i,colI]=rnorm(1, mean=mm[k+1]-0.1*tt, sd=ss[k+1])}
+    }
   trueLabel[i]=2}
 }
 
@@ -152,10 +161,11 @@ memberAccuracyKD[k] = mclust::adjustedRandIndex(memberDiceR,FkStatistic(X,3)[[3]
 cols=vector()
 cols[j] = "blue"
 cols[-j]="red"
+pairs(X[,1:5],col=cols)
 
-pairs(X[,1:3],col=cols)
+temp = prcomp(X,scale = TRUE)$x[,1:8]
 
-
+pairs(temp[,1:5],col=cols)
 
 ### for 3 clusters
 ### injury, equal sd, power >1, mm=(1,1000,10),ss=20,k=0.05
