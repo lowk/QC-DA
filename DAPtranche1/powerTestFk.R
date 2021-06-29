@@ -199,8 +199,9 @@ pairs(temp[,1:5],col=cols)
 ### injury, equal sd, power >1, mm=(1,1000,10),ss=20,k=0.05
 ### injury, unequal sd, power = k, mm=(1,1000,10),ss=6,k=0.01,0.04,0.06
 
-mm = seq(1,1000,10)
-ss = 10
+# mm = seq(1,1000,10)
+mm=10
+ss = 1
 
 varianceType=100
 vbet.vin3 = vector(mode="numeric",length=varianceType-2)
@@ -220,96 +221,143 @@ jc2=1
 jc3=1
 
 ### equal sd, for TestPower3
+# for(k in seq(1,varianceType-2,10)){
+#   for (i in 1:smpSz){
+#     if(i<floor(smpSz/3)){
+#       tt = sample(1:ftSz,floor(ftSz/2),replace=FALSE)
+#       for(ttt in 1:ftSz){
+#         if(ttt %in% tt){X[i,ttt]=rnorm(1, mean=mm[1]+0.1*ttt, sd=ss-0.05*k)}
+#         else{X[i,ttt]=rnorm(1, mean=mm[1]-0.1*ttt, sd=ss-0.05*k)}
+#       }
+#       trueLabel[i]=1
+#       j1[jc1]=i
+#       jc1=jc1+1}
+#     else if(i>2*smpSz/3){
+#       tt = sample(1:ftSz,floor(ftSz/2),replace=FALSE)
+#       for(ttt in 1:ftSz){
+#         if(ttt %in% tt){X[i,ttt]=rnorm(1, mean=mm[3]+0.1*ttt, sd=ss-0.05*k)}
+#         else{X[i,ttt]=rnorm(1, mean=mm[3]-0.1*ttt, sd=ss-0.05*k)}
+#       }
+#       trueLabel[i]=3
+#       j2[jc2]=i
+#       jc2=jc2+1}
+#     else{
+#       tt = sample(1:ftSz,floor(ftSz/2),replace=FALSE)
+#       for(ttt in 1:ftSz){
+#         if(ttt %in% tt){X[i,ttt]=rnorm(1, mean=mm[5]+0.1*ttt, sd=ss-0.05*k)}
+#         else{X[i,ttt]=rnorm(1, mean=mm[5]-0.1*ttt, sd=ss-0.05*k)}
+#       }
+#       trueLabel[i]=2
+#       j3[jc3]=i
+#       jc3=jc3+1}
+#   }
+
+
+### unequal sd for TestPower3
+# for(k in seq(1,varianceType-2,10)){
+#   for (i in 1:smpSz){
+#     if(i<floor(smpSz/3)){X[i,]=rnorm(ftSz, mean=mm[1], sd=ss-0.04*k)
+#     trueLabel[i]=1
+#     j1[jc1]=i
+#     jc1=jc1+1}
+#     else if(i>2*smpSz/3){X[i,]=rnorm(ftSz, mean=mm[5], sd=ss-0.06*k)
+#     trueLabel[i]=3
+#     j2[jc2]=i
+#     jc2=jc2+1}
+#     else{X[i,]=rnorm(ftSz, mean=mm[9], sd=ss-0.01*k)
+#     trueLabel[i]=2
+#     j3[jc3]=i
+#     jc3=jc3+1}
+#   }
+
+# ### equal sd, for TestPower3R
+# for(k in seq(1,varianceType-2,10)){
+#   for (i in 1:smpSz){
+#     if(i<floor(smpSz/3)){X[i,]=rnorm(ftSz, mean=mm[1], sd=ss-0.01*k)
+#     j1[jc1]=i
+#     jc1=jc1+1}
+#     else if(i>2*smpSz/3){X[i,]=rnorm(ftSz, mean=mm[3], sd=ss-0.01*k)
+#     j2[jc2]=i
+#     jc2=jc2+1}
+#     else{X[i,]=rnorm(ftSz, mean=mm[5], sd=ss-0.01*k)
+#     j3[jc3]=i
+#     jc3=jc3+1}
+#   }
+#   
+# for(k in seq(1,varianceType-2,10)){
+#   
+#   for (i in 1:smpSz){
+#     if(i<floor(smpSz/3)){X[i,]=rnorm(ftSz, mean=mm[1]+k*2, sd=ss)
+#     j1[jc1]=i
+#     jc1=jc1+1}
+#     else if(i>2*smpSz/3){X[i,]=rnorm(ftSz, mean=mm[5]+k*2, sd=ss)
+#     j2[jc2]=i
+#     jc2=jc2+1}
+#     else{X[i,]=rnorm(ftSz, mean=mm[9]+k*2, sd=ss)
+#     j3[jc3]=i
+#     jc3=jc3+1}
+#   }
+
+# for(k in seq(1,varianceType-2,10)){
+#   
+#   for (i in 1:smpSz){
+#     if(i<floor(smpSz/3)){X[i,]=rnorm(ftSz, mean=mm[1]+k*2, sd=ss+0.1*k)
+#     j1[jc1]=i
+#     jc1=jc1+1}
+#     else if(i>2*smpSz/3){X[i,]=rnorm(ftSz, mean=mm[5]+k*2, sd=ss+0.2*k)
+#     j2[jc2]=i
+#     jc2=jc2+1}
+#     else{X[i,]=rnorm(ftSz, mean=mm[9]+k*2, sd=ss+0.3*k)
+#     j3[jc3]=i
+#     jc3=jc3+1}
+#   }  
+
 for(k in seq(1,varianceType-2,10)){
   for (i in 1:smpSz){
+    
     if(i<floor(smpSz/3)){
-      tt = sample(1:ftSz,floor(ftSz/2),replace=FALSE)
-      for(ttt in 1:ftSz){
-        if(ttt %in% tt){X[i,ttt]=rnorm(1, mean=mm[1]+0.1*ttt, sd=ss-0.05*k)}
-        else{X[i,ttt]=rnorm(1, mean=mm[1]-0.1*ttt, sd=ss-0.05*k)}
+      
+      if(i%%ftSz==0){X[i,ftSz]=rnorm(1, mean=mm, sd=ss)
+      X[i,!ftSz]=0}
+      
+      else{for (colI in 1:ftSz)
+      {if(colI == i%%ftSz){X[i,colI]=rnorm(1, mean=mm, sd=ss)}
+        else{X[i,colI]=0}
       }
-      trueLabel[i]=1
-      j1[jc1]=i
-      jc1=jc1+1}
+        trueLabel[i]=1
+        j1[jc1]=i
+        jc1=jc1+1}
+    }
+    
     else if(i>2*smpSz/3){
-      tt = sample(1:ftSz,floor(ftSz/2),replace=FALSE)
-      for(ttt in 1:ftSz){
-        if(ttt %in% tt){X[i,ttt]=rnorm(1, mean=mm[3]+0.1*ttt, sd=ss-0.05*k)}
-        else{X[i,ttt]=rnorm(1, mean=mm[3]-0.1*ttt, sd=ss-0.05*k)}
+      if(i%%ftSz==0){X[i,ftSz]=rnorm(1, mean=mm+k*50, sd=ss)
+      X[i,!ftSz]=0}
+      
+      else{for (colI in 1:ftSz)
+      {if(colI == i%%ftSz){X[i,colI]=rnorm(1, mean=mm+k*50, sd=ss)}
+        else{X[i,colI]=0}
       }
-      trueLabel[i]=3
-      j2[jc2]=i
-      jc2=jc2+1}
+        trueLabel[i]=3
+        j2[jc2]=i
+        jc2=jc2+1}
+    }
+    
     else{
-      tt = sample(1:ftSz,floor(ftSz/2),replace=FALSE)
-      for(ttt in 1:ftSz){
-        if(ttt %in% tt){X[i,ttt]=rnorm(1, mean=mm[5]+0.1*ttt, sd=ss-0.05*k)}
-        else{X[i,ttt]=rnorm(1, mean=mm[5]-0.1*ttt, sd=ss-0.05*k)}
+      if(i%%ftSz==0){X[i,ftSz]=rnorm(1, mean=mm+k*100, sd=ss)
+      X[i,!ftSz]=0}
+      
+      else{for (colI in 1:ftSz)
+      {if(colI == i%%ftSz){X[i,colI]=rnorm(1, mean=mm+k*100, sd=ss)}
+        else{X[i,colI]=0}
       }
+        trueLabel[i]=3
+        j2[jc2]=i
+        jc2=jc2+1}
       trueLabel[i]=2
       j3[jc3]=i
       jc3=jc3+1}
   }
   
-  
-  ### unequal sd for TestPower3
-  # for(k in seq(1,varianceType-2,10)){
-  #   for (i in 1:smpSz){
-  #     if(i<floor(smpSz/3)){X[i,]=rnorm(ftSz, mean=mm[1], sd=ss-0.04*k)
-  #     trueLabel[i]=1
-  #     j1[jc1]=i
-  #     jc1=jc1+1}
-  #     else if(i>2*smpSz/3){X[i,]=rnorm(ftSz, mean=mm[5], sd=ss-0.06*k)
-  #     trueLabel[i]=3
-  #     j2[jc2]=i
-  #     jc2=jc2+1}
-  #     else{X[i,]=rnorm(ftSz, mean=mm[9], sd=ss-0.01*k)
-  #     trueLabel[i]=2
-  #     j3[jc3]=i
-  #     jc3=jc3+1}
-  #   }
-  
-  # ### equal sd, for TestPower3R
-  # for(k in seq(1,varianceType-2,10)){
-  #   for (i in 1:smpSz){
-  #     if(i<floor(smpSz/3)){X[i,]=rnorm(ftSz, mean=mm[1], sd=ss-0.01*k)
-  #     j1[jc1]=i
-  #     jc1=jc1+1}
-  #     else if(i>2*smpSz/3){X[i,]=rnorm(ftSz, mean=mm[3], sd=ss-0.01*k)
-  #     j2[jc2]=i
-  #     jc2=jc2+1}
-  #     else{X[i,]=rnorm(ftSz, mean=mm[5], sd=ss-0.01*k)
-  #     j3[jc3]=i
-  #     jc3=jc3+1}
-  #   }
-  #   
-  # for(k in seq(1,varianceType-2,10)){
-  #   
-  #   for (i in 1:smpSz){
-  #     if(i<floor(smpSz/3)){X[i,]=rnorm(ftSz, mean=mm[1]+k*2, sd=ss)
-  #     j1[jc1]=i
-  #     jc1=jc1+1}
-  #     else if(i>2*smpSz/3){X[i,]=rnorm(ftSz, mean=mm[5]+k*2, sd=ss)
-  #     j2[jc2]=i
-  #     jc2=jc2+1}
-  #     else{X[i,]=rnorm(ftSz, mean=mm[9]+k*2, sd=ss)
-  #     j3[jc3]=i
-  #     jc3=jc3+1}
-  #   }
-  
-  # for(k in seq(1,varianceType-2,10)){
-  #   
-  #   for (i in 1:smpSz){
-  #     if(i<floor(smpSz/3)){X[i,]=rnorm(ftSz, mean=mm[1]+k*2, sd=ss+0.1*k)
-  #     j1[jc1]=i
-  #     jc1=jc1+1}
-  #     else if(i>2*smpSz/3){X[i,]=rnorm(ftSz, mean=mm[5]+k*2, sd=ss+0.2*k)
-  #     j2[jc2]=i
-  #     jc2=jc2+1}
-  #     else{X[i,]=rnorm(ftSz, mean=mm[9]+k*2, sd=ss+0.3*k)
-  #     j3[jc3]=i
-  #     jc3=jc3+1}
-  #   }  
   cen1 = apply(X[j1,],2,mean)
   cen2 = apply(X[j2,],2,mean)
   cen3 = apply(X[j3,],2,mean)
