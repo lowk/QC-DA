@@ -111,21 +111,38 @@ varianceType=10
 ### generate simulated dataset X. 
 for(k in 1:varianceType-1)
 {j=sample(1:smpSz,floor(smpSz/2),replace=FALSE) ### setting which sample is 1 or 2
-tt=sample(1:ftSz,floor(ftSz/2),replace=FALSE)  ### setting which feature have mean + tt or mean - tt
+# tt=sample(1:ftSz,floor(ftSz/2),replace=FALSE)  ### setting which feature have mean + tt or mean - tt
+# 
+# for (i in 1:smpSz){
+#   if(i %in% j){
+#     for (colI in 1:ftSz){
+#       if(colI %in% tt){X[i,colI]=rnorm(1, mean=mm[1]+0.1*colI, sd=ss[1])}
+#       else{X[i,colI]=rnorm(1, mean=mm[1]-0.1*colI, sd=ss[1])}
+#     }
+#   trueLabel[i]=1}
+#   else{
+#     for (colI in 1:ftSz){
+#       if(colI %in% tt){X[i,colI]=rnorm(1, mean=mm[k+1]+0.1*colI, sd=ss[k+1])}
+#       else{X[i,colI]=rnorm(1, mean=mm[k+1]-0.1*colI, sd=ss[k+1])}
+#     }
+#   trueLabel[i]=2}
+# }
 
+### X is orthogonal 
 for (i in 1:smpSz){
   if(i %in% j){
     for (colI in 1:ftSz){
-      if(colI %in% tt){X[i,colI]=rnorm(1, mean=mm[1]+0.1*colI, sd=ss[1])}
-      else{X[i,colI]=rnorm(1, mean=mm[1]-0.1*colI, sd=ss[1])}
-    }
-  trueLabel[i]=1}
+      tt = sample(1:ftSz,1,replace=TRUE)
+      X[i,tt]=rnorm(1, mean=mm[1], sd=ss[1])
+      X[i,!tt]=0
+      trueLabel[i]=1}}
   else{
     for (colI in 1:ftSz){
-      if(colI %in% tt){X[i,colI]=rnorm(1, mean=mm[k+1]+0.1*colI, sd=ss[k+1])}
-      else{X[i,colI]=rnorm(1, mean=mm[k+1]-0.1*colI, sd=ss[k+1])}
-    }
-  trueLabel[i]=2}
+      ttt=sample(1:ftSz,1,replace=TRUE)
+      X[i,ttt]=rnorm(1, mean=mm[k+1], sd=ss[k+1])
+      X[i,!ttt]=0
+      trueLabel[i]=2}
+  }
 }
 
 cen1 = apply(X[j,],2,mean)
@@ -148,16 +165,16 @@ for (testCounter in 1:maxCounter){
   }
 }
 
-TestPower2R[k] = length(which(RecCluster==2))/maxCounter
-TestPower2[k] = length(which(RecCluster>1))/maxCounter
-memberAccuracy[k] = mclust::adjustedRandIndex(trueLabel,FkStatistic(X,3)[[3]])
+TestPower2[k] = length(which(RecCluster>1))/maxCounter   ### power >1
+TestPower2R[k] = length(which(RecCluster==2))/maxCounter ### power =k
+memberAccuracy[k] = mclust::adjustedRandIndex(trueLabel,FkStatistic(X,3)[[3]])  ### kmeans membership accuracy
 tempClust <- consensus_cluster(X, nk = 2, p.item = 0.8, reps = 5,algorithms = c("hc","km","hdbscan"))
 # CC <- apply(tempClust, 2:4, impute_knn, data = X, seed = 1)
 # CC_imputed <- impute_missing(CC, X, nk = 2)
 # sig_obj[k] <- sigclust(X, k = 2, nsim = 100, labflag = 0, label = CC_imputed)
-memberDiceR <- apply(tempClust,1,function(x){names(which.max(table(x)))})
-memberAccuracyDice[k] = mclust::adjustedRandIndex(trueLabel,memberDiceR)
-memberAccuracyKD[k] = mclust::adjustedRandIndex(memberDiceR,FkStatistic(X,3)[[3]])
+memberDiceR <- apply(tempClust,1,function(x){names(which.max(table(x)))})  
+memberAccuracyDice[k] = mclust::adjustedRandIndex(trueLabel,memberDiceR)   ### concensus membership accuracy
+memberAccuracyKD[k] = mclust::adjustedRandIndex(memberDiceR,FkStatistic(X,3)[[3]]) ### membership consistency between kmeans and concensus
 }
 
 cols=vector()
@@ -165,8 +182,7 @@ cols[j] = "blue"
 cols[-j]="red"
 pairs(X[,1:5],col=cols)
 
-temp = prcomp(X,scale = TRUE)$x[,1:8]
-
+temp = prcomp(X,scale = TRUE)$x
 pairs(temp[,1:5],col=cols)
 
 ### for 3 clusters
@@ -196,65 +212,80 @@ jc3=1
 ### equal sd, for TestPower3
 for(k in seq(1,varianceType-2,10)){
   for (i in 1:smpSz){
-    if(i<floor(smpSz/3)){X[i,]=rnorm(ftSz, mean=mm[1], sd=ss-0.05*k)
-    trueLabel[i]=1
-    j1[jc1]=i
-    jc1=jc1+1}
-    else if(i>2*smpSz/3){X[i,]=rnorm(ftSz, mean=mm[3], sd=ss-0.05*k)
-    trueLabel[i]=3
-    j2[jc2]=i
-    jc2=jc2+1}
-    else{X[i,]=rnorm(ftSz, mean=mm[5], sd=ss-0.05*k)
-    trueLabel[i]=2
-    j3[jc3]=i
-    jc3=jc3+1}
+    if(i<floor(smpSz/3)){
+      tt = sample(1:ftSz,floor(ftSz/2),replace=FALSE)
+      for(ttt in 1:ftSz){
+        if(ttt %in% tt){X[i,ttt]=rnorm(1, mean=mm[1]+0.1*ttt, sd=ss-0.05*k)}
+        else{X[i,ttt]=rnorm(1, mean=mm[1]-0.1*ttt, sd=ss-0.05*k)}
+      }
+      trueLabel[i]=1
+      j1[jc1]=i
+      jc1=jc1+1}
+    else if(i>2*smpSz/3){
+      tt = sample(1:ftSz,floor(ftSz/2),replace=FALSE)
+      for(ttt in 1:ftSz){
+        if(ttt %in% tt){X[i,ttt]=rnorm(1, mean=mm[3]+0.1*ttt, sd=ss-0.05*k)}
+        else{X[i,ttt]=rnorm(1, mean=mm[3]-0.1*ttt, sd=ss-0.05*k)}
+      }
+      trueLabel[i]=3
+      j2[jc2]=i
+      jc2=jc2+1}
+    else{
+      tt = sample(1:ftSz,floor(ftSz/2),replace=FALSE)
+      for(ttt in 1:ftSz){
+        if(ttt %in% tt){X[i,ttt]=rnorm(1, mean=mm[5]+0.1*ttt, sd=ss-0.05*k)}
+        else{X[i,ttt]=rnorm(1, mean=mm[5]-0.1*ttt, sd=ss-0.05*k)}
+      }
+      trueLabel[i]=2
+      j3[jc3]=i
+      jc3=jc3+1}
   }
-
-
-### unequal sd for TestPower3
-# for(k in seq(1,varianceType-2,10)){
-#   for (i in 1:smpSz){
-#     if(i<floor(smpSz/3)){X[i,]=rnorm(ftSz, mean=mm[1], sd=ss-0.04*k)
-#     trueLabel[i]=1
-#     j1[jc1]=i
-#     jc1=jc1+1}
-#     else if(i>2*smpSz/3){X[i,]=rnorm(ftSz, mean=mm[5], sd=ss-0.06*k)
-#     trueLabel[i]=3
-#     j2[jc2]=i
-#     jc2=jc2+1}
-#     else{X[i,]=rnorm(ftSz, mean=mm[9], sd=ss-0.01*k)
-#     trueLabel[i]=2
-#     j3[jc3]=i
-#     jc3=jc3+1}
-#   }
-
-# ### equal sd, for TestPower3R
-# for(k in seq(1,varianceType-2,10)){
-#   for (i in 1:smpSz){
-#     if(i<floor(smpSz/3)){X[i,]=rnorm(ftSz, mean=mm[1], sd=ss-0.01*k)
-#     j1[jc1]=i
-#     jc1=jc1+1}
-#     else if(i>2*smpSz/3){X[i,]=rnorm(ftSz, mean=mm[3], sd=ss-0.01*k)
-#     j2[jc2]=i
-#     jc2=jc2+1}
-#     else{X[i,]=rnorm(ftSz, mean=mm[5], sd=ss-0.01*k)
-#     j3[jc3]=i
-#     jc3=jc3+1}
-#   }
-#   
-# for(k in seq(1,varianceType-2,10)){
-#   
-#   for (i in 1:smpSz){
-#     if(i<floor(smpSz/3)){X[i,]=rnorm(ftSz, mean=mm[1]+k*2, sd=ss)
-#     j1[jc1]=i
-#     jc1=jc1+1}
-#     else if(i>2*smpSz/3){X[i,]=rnorm(ftSz, mean=mm[5]+k*2, sd=ss)
-#     j2[jc2]=i
-#     jc2=jc2+1}
-#     else{X[i,]=rnorm(ftSz, mean=mm[9]+k*2, sd=ss)
-#     j3[jc3]=i
-#     jc3=jc3+1}
-#   }
+  
+  
+  ### unequal sd for TestPower3
+  # for(k in seq(1,varianceType-2,10)){
+  #   for (i in 1:smpSz){
+  #     if(i<floor(smpSz/3)){X[i,]=rnorm(ftSz, mean=mm[1], sd=ss-0.04*k)
+  #     trueLabel[i]=1
+  #     j1[jc1]=i
+  #     jc1=jc1+1}
+  #     else if(i>2*smpSz/3){X[i,]=rnorm(ftSz, mean=mm[5], sd=ss-0.06*k)
+  #     trueLabel[i]=3
+  #     j2[jc2]=i
+  #     jc2=jc2+1}
+  #     else{X[i,]=rnorm(ftSz, mean=mm[9], sd=ss-0.01*k)
+  #     trueLabel[i]=2
+  #     j3[jc3]=i
+  #     jc3=jc3+1}
+  #   }
+  
+  # ### equal sd, for TestPower3R
+  # for(k in seq(1,varianceType-2,10)){
+  #   for (i in 1:smpSz){
+  #     if(i<floor(smpSz/3)){X[i,]=rnorm(ftSz, mean=mm[1], sd=ss-0.01*k)
+  #     j1[jc1]=i
+  #     jc1=jc1+1}
+  #     else if(i>2*smpSz/3){X[i,]=rnorm(ftSz, mean=mm[3], sd=ss-0.01*k)
+  #     j2[jc2]=i
+  #     jc2=jc2+1}
+  #     else{X[i,]=rnorm(ftSz, mean=mm[5], sd=ss-0.01*k)
+  #     j3[jc3]=i
+  #     jc3=jc3+1}
+  #   }
+  #   
+  # for(k in seq(1,varianceType-2,10)){
+  #   
+  #   for (i in 1:smpSz){
+  #     if(i<floor(smpSz/3)){X[i,]=rnorm(ftSz, mean=mm[1]+k*2, sd=ss)
+  #     j1[jc1]=i
+  #     jc1=jc1+1}
+  #     else if(i>2*smpSz/3){X[i,]=rnorm(ftSz, mean=mm[5]+k*2, sd=ss)
+  #     j2[jc2]=i
+  #     jc2=jc2+1}
+  #     else{X[i,]=rnorm(ftSz, mean=mm[9]+k*2, sd=ss)
+  #     j3[jc3]=i
+  #     jc3=jc3+1}
+  #   }
   
   # for(k in seq(1,varianceType-2,10)){
   #   
@@ -316,6 +347,8 @@ cols[j1] = "blue"
 cols[j2]="red"
 cols[j3]="green"
 pairs(X[,1:3],col=cols)
+temp = prcomp(X,scale = TRUE)$x
+pairs(temp[,1:5],col=cols)
 
 plot(sort(vbet.vin2),TestPower2[order(vbet.vin2)],type="l",col="red",main="Power to detect K>1 (equal sd within cluster, (sample size = Injury group sample size)",xlab="Between-cluster to within-cluster variance ratio",ylab="power")
 lines(sort(vbet.vin3),TestPower3[order(vbet.vin3)],type="l",lty=2,col="blue")
