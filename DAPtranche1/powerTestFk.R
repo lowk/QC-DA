@@ -36,7 +36,7 @@ MMSS1 <- function(varianceType){
 MMSSm2 <- function(equalSD,varianceType){
   if(equalSD == 1){
     mm = vector(mode="numeric",length=varianceType) 
-    ss = rep(1,varianceType)   ### same variance ratio, equal sd within cluster have more power than unequal sd
+    ss = rep(0.5,varianceType)   ### same variance ratio, equal sd within cluster have more power than unequal sd
     mm[1]=0
     for (i in 2:varianceType){
       mm[i]=mm[1]+0.2*(i-1)}
@@ -58,7 +58,7 @@ pcStr <- prcomp(log10(as.matrix(exprDat_normX)),scale = TRUE)
 topPCn <- which(get_eigenvalue(pcStr)$cumulative.variance.percent>80)[1]
 ftSz = topPCn
 smpSz = nrow(exprDat_normX)
-X=matrix(NA,nrow=smpSz,ncol=topPCn)
+X=matrix(0,nrow=smpSz,ncol=ftSz)
 trueLabel = vector(mode="integer",length=smpSz)
 
 ### begin artificial test
@@ -131,16 +131,26 @@ for(k in 1:varianceType-1)
 ### X is orthogonal 
 for (i in 1:smpSz){
   if(i %in% j){
-    for (colI in 1:ftSz){
-      tt = sample(1:ftSz,1,replace=TRUE)
-      X[i,tt]=rnorm(1, mean=mm[1], sd=ss[1])
-      X[i,!tt]=0
+    
+    if(i%%ftSz==0){X[i,ftSz]=rnorm(1, mean=mm[1], sd=ss[1])
+    X[i,!ftSz]=0}
+    
+    else{for (colI in 1:ftSz)
+    {if(colI == i%%ftSz){X[i,colI]=rnorm(1, mean=mm[1], sd=ss[1])}
+      else{{X[i,colI]=0}
+      }
       trueLabel[i]=1}}
+  }
+  
   else{
-    for (colI in 1:ftSz){
-      ttt=sample(1:ftSz,1,replace=TRUE)
-      X[i,ttt]=rnorm(1, mean=mm[k+1], sd=ss[k+1])
-      X[i,!ttt]=0
+    
+    if(i%%ftSz==0){X[i,ftSz]=rnorm(1, mean=mm[k+1], sd=ss[k+1])
+    X[i,!ftSz]=0}
+    
+    else{for (colI in 1:ftSz)
+    {if(colI == i%%ftSz){X[i,colI]=rnorm(1, mean=mm[k+1], sd=ss[k+1])}
+      else{X[i,colI]=0}
+    }
       trueLabel[i]=2}
   }
 }
