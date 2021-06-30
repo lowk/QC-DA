@@ -29,7 +29,7 @@ FkStatistic <- function(pcDat,thisk){
 # ftSz = topPCn
 ftSz = 10
 # smpSz = 
-smpSz = 219 ### injury
+smpSz = 219 ### injury:219
 X=matrix(0,nrow=smpSz,ncol=ftSz)
 trueLabel = vector(mode="integer",length=smpSz)
 
@@ -137,7 +137,7 @@ for(k in 1:varianceType){
   memberAccuracyKD[k] = mclust::adjustedRandIndex(memberDiceR,FkStatistic(X,3)[[3]]) ### membership consistency between kmeans and concensus
 }
 
-plot(sort(vbet.vin2),TestPower2[order(vbet.vin2)],type="b",col="red",main="Power to detect K>1 (sample size = Injury group sample size)",xlab="Between-cluster to within-cluster variance ratio",ylab="power")
+plot(sort(vbet.vin2),TestPower2[order(vbet.vin2)],type="b",col="red",main="Power to detect K>1, sample size = Injury group sample size",xlab="Between-cluster to within-cluster variance ratio",ylab="power")
 
 cols=vector()
 cols[j] = "blue"
@@ -149,13 +149,12 @@ pairs(temp[,1:5],col=cols)
 
 
 ### for 3 clusters 
-mm=c(10,20,30)
-varianceType=5
-pdf("cluster3.pdf")
-par(mfrow=c(1,3))
-
-# for (ss in seq(0,50,2)){
-
+mm=c(0,1,2)
+varianceType=50
+ss=1
+alpha=0.01
+# pdf("cluster3.pdf")
+# par(mfrow=c(1,3))
 vbet.vin3 = vector(mode="numeric",length=varianceType)
 TestPower3R = vector(mode="numeric",length=varianceType)
 TestPower3R2 = vector(mode="numeric",length=varianceType)
@@ -175,7 +174,7 @@ jc3=1
 ### equal sd, for TestPower3
 for(k in 1:varianceType){
   
-  maxCounter=5
+  maxCounter=30
   RecCluster = vector(mode="integer",length=maxCounter)
   RecCluster2 = vector(mode="integer",length=maxCounter)
   RecCluster3 = vector(mode="integer",length=maxCounter)
@@ -185,8 +184,8 @@ for(k in 1:varianceType){
       if(i<floor(smpSz/3)){
         tt = sample(1:ftSz,floor(ftSz/2),replace=FALSE)
         for(ttt in 1:ftSz){
-          if(ttt %in% tt){X[i,ttt]=rnorm(1, mean=mm[1]+0.1*ttt, sd=ss+0.05*k)}
-          else{X[i,ttt]=rnorm(1, mean=mm[1]-0.1*ttt, sd=ss+0.05*k)}
+          if(ttt %in% tt){X[i,ttt]=rnorm(1, mean=mm[1]+0.1*ttt, sd=ss+alpha*k)}
+          else{X[i,ttt]=rnorm(1, mean=mm[1]-0.1*ttt, sd=ss+alpha*k)}
         }
         trueLabel[i]=1
         j1[jc1]=i
@@ -194,8 +193,8 @@ for(k in 1:varianceType){
       else if(i>2*smpSz/3){
         tt = sample(1:ftSz,floor(ftSz/2),replace=FALSE)
         for(ttt in 1:ftSz){
-          if(ttt %in% tt){X[i,ttt]=rnorm(1, mean=mm[2]+0.1*ttt, sd=ss+0.05*k)}
-          else{X[i,ttt]=rnorm(1, mean=mm[2]-0.1*ttt, sd=ss+0.05*k)}
+          if(ttt %in% tt){X[i,ttt]=rnorm(1, mean=mm[2]+0.1*ttt, sd=ss+alpha*k)}
+          else{X[i,ttt]=rnorm(1, mean=mm[2]-0.1*ttt, sd=ss+alpha*k)}
         }
         trueLabel[i]=3
         j2[jc2]=i
@@ -203,8 +202,8 @@ for(k in 1:varianceType){
       else{
         tt = sample(1:ftSz,floor(ftSz/2),replace=FALSE)
         for(ttt in 1:ftSz){
-          if(ttt %in% tt){X[i,ttt]=rnorm(1, mean=mm[3]+0.1*ttt, sd=ss+0.05*k)}
-          else{X[i,ttt]=rnorm(1, mean=mm[3]-0.1*ttt, sd=ss+0.05*k)}
+          if(ttt %in% tt){X[i,ttt]=rnorm(1, mean=mm[3]+0.1*ttt, sd=ss+alpha*k)}
+          else{X[i,ttt]=rnorm(1, mean=mm[3]-0.1*ttt, sd=ss+alpha*k)}
         }
         trueLabel[i]=2
         j3[jc3]=i
@@ -249,8 +248,7 @@ for(k in 1:varianceType){
   # memberAccuracyKD[k] = mclust::adjustedRandIndex(memberDiceR,FkStatistic(X,3)[[3]])
 }
 plot(sort(vbet.vin3),TestPower3[order(vbet.vin3)],type="b",lty=2,col="blue",main="Power to detect K>1, sample size = Injury group sample size",xlab="Between-cluster to within-cluster variance ratio",ylab="power")
-# }
-dev.off()
+# dev.off()
 
 
 
