@@ -68,6 +68,7 @@ for(k in 1:varianceType){
 
 
 ### for 2 clusters
+
 varianceType=10
 vbet.vin2 = vector(mode="numeric",length=varianceType)
 TestPower2R = vector(mode="numeric",length=varianceType)
@@ -79,39 +80,41 @@ memberAccuracyKD = vector(mode="numeric",length=varianceType)
 
 mm=20
 alpha=20
+
 ### generate simulated dataset X. 
 for(k in 1:varianceType){
   
-  j=sample(1:smpSz,floor(smpSz/2),replace=FALSE) ### setting which sample is 1 or 2
-  tt=sample(1:ftSz,floor(ftSz/2),replace=FALSE)  ### setting which feature have mean + tt or mean - tt
-  
-  for (i in 1:smpSz){
-    if(i %in% j){
-      for (colI in 1:ftSz){
-        if(colI %in% tt){X[i,colI]=rnorm(1, mean=0.1*colI, sd=alpha*k)}
-        else{X[i,colI]=rnorm(1, mean=-0.1*colI, sd=alpha*k)}
-      }
-      trueLabel[i]=1
-    }
-    else{
-      for (colI in 1:ftSz){
-        if(colI %in% tt){X[i,colI]=rnorm(1, mean=mm+ alpha*colI, sd=alpha*k)}
-        else{X[i,colI]=rnorm(1, mean=mm-0.1*colI, sd=alpha*k)}
-      }
-      trueLabel[i]=2
-    }
-  }
-  
-  cen1 = apply(X[j,],2,mean)
-  cen2 = apply(X[-j,],2,mean)
-  vbet = sqrt(apply(as.matrix((cen1-cen2)^2),2,sum))/2
-  vin = (sum(sqrt(apply((apply(X[j,],1,function(x){(x-cen1)^2})),2,sum))) + 
-           sum(sqrt(apply((apply(X[-j,],1,function(x){(x-cen2)^2})),2,sum))))/nrow(X)
-  vbet.vin2[k] = vbet/vin
-  
-  maxCounter=10
+  maxCounter=30
   RecCluster = vector(mode="integer",length=maxCounter)
-  for (testCounter in 1:maxCounter){
+  for (testCounter in 1:maxCounter){  
+    j=sample(1:smpSz,floor(smpSz/2),replace=FALSE) ### setting which sample is 1 or 2
+    tt=sample(1:ftSz,floor(ftSz/2),replace=FALSE)  ### setting which feature have mean + tt or mean - tt
+    
+    for (i in 1:smpSz){
+      if(i %in% j){
+        for (colI in 1:ftSz){
+          if(colI %in% tt){X[i,colI]=rnorm(1, mean=0.1*colI, sd=alpha*k)}
+          else{X[i,colI]=rnorm(1, mean=-0.1*colI, sd=alpha*k)}
+        }
+        trueLabel[i]=1
+      }
+      else{
+        for (colI in 1:ftSz){
+          if(colI %in% tt){X[i,colI]=rnorm(1, mean=mm+ alpha*colI, sd=alpha*k)}
+          else{X[i,colI]=rnorm(1, mean=mm-0.1*colI, sd=alpha*k)}
+        }
+        trueLabel[i]=2
+      }
+    }
+    
+    cen1 = apply(X[j,],2,mean)
+    cen2 = apply(X[-j,],2,mean)
+    vbet = sqrt(apply(as.matrix((cen1-cen2)^2),2,sum))/2
+    vin = (sum(sqrt(apply((apply(X[j,],1,function(x){(x-cen1)^2})),2,sum))) + 
+             sum(sqrt(apply((apply(X[-j,],1,function(x){(x-cen2)^2})),2,sum))))/nrow(X)
+    vbet.vin2[k] = vbet/vin
+    
+    
     fks = vector(mode="numeric",length=6)
     for (myK in 1:6){fks[myK] <-FkStatistic(X,myK)[[1]]}
     
@@ -134,8 +137,7 @@ for(k in 1:varianceType){
   memberAccuracyKD[k] = mclust::adjustedRandIndex(memberDiceR,FkStatistic(X,3)[[3]]) ### membership consistency between kmeans and concensus
 }
 
-plot(sort(vbet.vin2),TestPower2[order(vbet.vin2)],col="red",main="Power to detect K>1 (sample size = Injury group sample size)",xlab="Between-cluster to within-cluster variance ratio",ylab="power")
-lines(sort(vbet.vin2),TestPower2[order(vbet.vin2)],type="l",col="red")
+plot(sort(vbet.vin2),TestPower2[order(vbet.vin2)],type="b",col="red",main="Power to detect K>1 (sample size = Injury group sample size)",xlab="Between-cluster to within-cluster variance ratio",ylab="power")
 
 cols=vector()
 cols[j] = "blue"
@@ -148,28 +150,37 @@ pairs(temp[,1:5],col=cols)
 
 ### for 3 clusters 
 mm=c(10,20,30)
-varianceType=100
+varianceType=5
 pdf("cluster3.pdf")
 par(mfrow=c(1,3))
-for (ss in seq(0,50,2)){
-  vbet.vin3 = vector(mode="numeric",length=varianceType)
-  TestPower3R = vector(mode="numeric",length=varianceType)
-  TestPower3R2 = vector(mode="numeric",length=varianceType)
-  TestPower3R3 = vector(mode="numeric",length=varianceType)
-  TestPower3 = vector(mode="numeric",length=varianceType)
-  memberAccuracy = vector(mode="numeric",length=varianceType)
-  memberAccuracyDice = vector(mode="numeric",length=varianceType)
-  memberAccuracyKD = vector(mode="numeric",length=varianceType)
+
+# for (ss in seq(0,50,2)){
+
+vbet.vin3 = vector(mode="numeric",length=varianceType)
+TestPower3R = vector(mode="numeric",length=varianceType)
+TestPower3R2 = vector(mode="numeric",length=varianceType)
+TestPower3R3 = vector(mode="numeric",length=varianceType)
+TestPower3 = vector(mode="numeric",length=varianceType)
+memberAccuracy = vector(mode="numeric",length=varianceType)
+memberAccuracyDice = vector(mode="numeric",length=varianceType)
+memberAccuracyKD = vector(mode="numeric",length=varianceType)
+
+j1 = vector(mode="integer")
+j2= vector(mode="integer")
+j3= vector(mode="integer")
+jc1=1
+jc2=1
+jc3=1
+
+### equal sd, for TestPower3
+for(k in 1:varianceType){
   
-  j1 = vector(mode="integer")
-  j2= vector(mode="integer")
-  j3= vector(mode="integer")
-  jc1=1
-  jc2=1
-  jc3=1
+  maxCounter=5
+  RecCluster = vector(mode="integer",length=maxCounter)
+  RecCluster2 = vector(mode="integer",length=maxCounter)
+  RecCluster3 = vector(mode="integer",length=maxCounter)
   
-  ### equal sd, for TestPower3
-  for(k in 1:varianceType){
+  for (testCounter in 1:maxCounter){
     for (i in 1:smpSz){
       if(i<floor(smpSz/3)){
         tt = sample(1:ftSz,floor(ftSz/2),replace=FALSE)
@@ -211,39 +222,34 @@ for (ss in seq(0,50,2)){
              sum(sqrt(apply((apply(X[j3,],1,function(x){(x-cen3)^2})),2,sum))))/nrow(X)
     vbet.vin3[k] = vbet/vin
     
-    maxCounter=5
-    RecCluster = vector(mode="integer",length=maxCounter)
-    RecCluster2 = vector(mode="integer",length=maxCounter)
-    RecCluster3 = vector(mode="integer",length=maxCounter)
     
-    for (testCounter in 1:maxCounter){
-      fks = vector(mode="numeric",length=6)
-      for (myK in 1:6){fks[myK] <-FkStatistic(X,myK)[[1]]}
-      
-      if(length(which(fks<0.85))==0){RecCluster[testCounter] = 1
-      }else{
-        RecCluster[testCounter] = which(fks==min(fks))
-        # RecCluster2[testCounter] <- length(unique(NbClust(data = X ,distance = "euclidean", min.nc = 2, max.nc = 15, method = "kmeans", index = "all", alphaBeale = 0.1)$Best.partition))
-        # tempClust <- consensus_cluster(X, nk = 2:4, p.item = 0.8, reps = 5,algorithms = c("hc","km","hdbscan"))
-        # RecCluster3[testCounter]  <- consensus_evaluate(X,tempClust,plot = FALSE)$k
-      }
-      
-      TestPower3[k] = length(which(RecCluster>1))/maxCounter
-      TestPower3R[k] = length(which(RecCluster==3))/maxCounter
-      # TestPower3R2[k] = length(which(RecCluster2==3))/maxCounter
-      # TestPower3R3[k] = length(which(RecCluster3==3))/maxCounter
-      memberAccuracy[k] = mclust::adjustedRandIndex(trueLabel,FkStatistic(X,3)[[3]])
-      # tempClust <- consensus_cluster(X, nk = 3, p.item = 0.8, reps = 5,algorithms = c("hc","km","hdbscan"))
-      # CC <- apply(tempClust, 2:4, impute_knn, data = X, seed = 1)
-      # CC_imputed <- impute_missing(CC, X, nk = 3)
-      # sig_obj[k] <- sigclust(X, k = 3, nsim = 100, labflag = 0, label = CC_imputed)
-      # memberDiceR <- apply(tempClust,1,function(x){names(which.max(table(x)))})
-      # memberAccuracyDice[k] = mclust::adjustedRandIndex(trueLabel,memberDiceR)
-      # memberAccuracyKD[k] = mclust::adjustedRandIndex(memberDiceR,FkStatistic(X,3)[[3]])
+    fks = vector(mode="numeric",length=6)
+    for (myK in 1:6){fks[myK] <-FkStatistic(X,myK)[[1]]}
+    
+    if(length(which(fks<0.85))==0){RecCluster[testCounter] = 1
+    }else{
+      RecCluster[testCounter] = which(fks==min(fks))
+      # RecCluster2[testCounter] <- length(unique(NbClust(data = X ,distance = "euclidean", min.nc = 2, max.nc = 15, method = "kmeans", index = "all", alphaBeale = 0.1)$Best.partition))
+      # tempClust <- consensus_cluster(X, nk = 2:4, p.item = 0.8, reps = 5,algorithms = c("hc","km","hdbscan"))
+      # RecCluster3[testCounter]  <- consensus_evaluate(X,tempClust,plot = FALSE)$k
     }
   }
-  plot(sort(vbet.vin3),TestPower3[order(vbet.vin3)],type="b",lty=2,col="blue",main="Power to detect K>1, sample size = Injury group sample size",xlab="Between-cluster to within-cluster variance ratio",ylab="power")
+  
+  TestPower3[k] = length(which(RecCluster>1))/maxCounter
+  TestPower3R[k] = length(which(RecCluster==3))/maxCounter
+  # TestPower3R2[k] = length(which(RecCluster2==3))/maxCounter
+  # TestPower3R3[k] = length(which(RecCluster3==3))/maxCounter
+  memberAccuracy[k] = mclust::adjustedRandIndex(trueLabel,FkStatistic(X,3)[[3]])
+  # tempClust <- consensus_cluster(X, nk = 3, p.item = 0.8, reps = 5,algorithms = c("hc","km","hdbscan"))
+  # CC <- apply(tempClust, 2:4, impute_knn, data = X, seed = 1)
+  # CC_imputed <- impute_missing(CC, X, nk = 3)
+  # sig_obj[k] <- sigclust(X, k = 3, nsim = 100, labflag = 0, label = CC_imputed)
+  # memberDiceR <- apply(tempClust,1,function(x){names(which.max(table(x)))})
+  # memberAccuracyDice[k] = mclust::adjustedRandIndex(trueLabel,memberDiceR)
+  # memberAccuracyKD[k] = mclust::adjustedRandIndex(memberDiceR,FkStatistic(X,3)[[3]])
 }
+plot(sort(vbet.vin3),TestPower3[order(vbet.vin3)],type="b",lty=2,col="blue",main="Power to detect K>1, sample size = Injury group sample size",xlab="Between-cluster to within-cluster variance ratio",ylab="power")
+# }
 dev.off()
 
 
