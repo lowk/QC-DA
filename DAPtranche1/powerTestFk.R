@@ -70,7 +70,6 @@ for(k in 1:varianceType){
 ### for 2 clusters
 ### Injury: Power >1, mm=30, varianceType=50, alpha=20;  Power=k
 
-
 varianceType=50
 mm=30
 alpha=20
@@ -87,8 +86,8 @@ memberAccuracyKD = vector(mode="numeric",length=varianceType)
 ### generate simulated dataset X. 
 for(k in 1:varianceType){
   
-  RecCluster = vector(mode="integer",length=maxCounter)
   for (testCounter in 1:maxCounter){  
+    RecCluster = vector(mode="integer",length=maxCounter)
     j=sample(1:smpSz,floor(smpSz/2),replace=FALSE) ### setting which sample is 1 or 2
     tt=sample(1:ftSz,floor(ftSz/2),replace=FALSE)  ### setting which feature have mean + tt or mean - tt
     
@@ -153,10 +152,10 @@ pairs(temp[,1:5],col=cols)
 ### Injury: Power >1, mm=c(0,1,2),varianceType=100,ss=1,alpha=0.01; Power=k
 
 mm=c(0,1,2)
-varianceType=2
-ss=1
+varianceType=50
+ss=10
 alpha=0.01
-maxCounter=3
+maxCounter=5
 # pdf("cluster3.pdf")
 # par(mfrow=c(1,3))
 vbet.vin3 = vector(mode="numeric",length=varianceType)
@@ -165,6 +164,7 @@ TestPower3R2 = vector(mode="numeric",length=varianceType)
 TestPower3R3 = vector(mode="numeric",length=varianceType)
 TestPower3 = vector(mode="numeric",length=varianceType)
 memberAccuracy = vector(mode="numeric",length=varianceType)
+memberAccuracy2 = vector(mode="numeric",length=varianceType)
 memberAccuracyDice = vector(mode="numeric",length=varianceType)
 memberAccuracyKD = vector(mode="numeric",length=varianceType)
 
@@ -178,11 +178,10 @@ jc3=1
 ### equal sd, for TestPower3
 for(k in 1:varianceType){
   
-  RecCluster = vector(mode="integer",length=maxCounter)
-  RecCluster2 = vector(mode="integer",length=maxCounter)
-  RecCluster3 = vector(mode="integer",length=maxCounter)
-  
   for (testCounter in 1:maxCounter){
+    RecCluster = vector(mode="integer",length=maxCounter)
+    RecCluster2 = vector(mode="integer",length=maxCounter)
+    RecCluster3 = vector(mode="integer",length=maxCounter)
     for (i in 1:smpSz){
       if(i<floor(smpSz/3)){
         tt = sample(1:ftSz,floor(ftSz/2),replace=FALSE)
@@ -232,6 +231,7 @@ for(k in 1:varianceType){
     }else{
       RecCluster[testCounter] = which(fks==min(fks))
       tempP <- NbClust(data = X ,distance = "euclidean", min.nc = 2, max.nc = 15, method = "kmeans", index = "all", alphaBeale = 0.1)$Best.partition
+      browser()
       RecCluster2[testCounter] <- length(unique(tempP))
       # tempClust <- consensus_cluster(X, nk = 2:4, p.item = 0.8, reps = 5,algorithms = c("hc","km","hdbscan"))
       # RecCluster3[testCounter]  <- consensus_evaluate(X,tempClust,plot = FALSE)$k
@@ -253,6 +253,9 @@ for(k in 1:varianceType){
   # memberAccuracyKD[k] = mclust::adjustedRandIndex(memberDiceR,FkStatistic(X,3)[[3]])
 }
 plot(sort(vbet.vin3),TestPower3[order(vbet.vin3)],type="b",lty=2,col="blue",main="Power to detect K>1, sample size = Injury group sample size",xlab="Between-cluster to within-cluster variance ratio",ylab="power")
+plot(sort(vbet.vin3),TestPower3R[order(vbet.vin3)],type="l",lty=2,col="blue",main="f(K), Power to detect correct 3 clusters (equal sd wiwthin cluster,sample size = OA sample size",xlab="Between-cluster to within-cluster variance ratio",ylab="power")
+plot(sort(vbet.vin3),TestPower3R2[order(vbet.vin3)],type="l",lty=2,col="blue",main="NbClust, Power to detect correct 3 clusters (equal sd wiwthin cluster,sample size = OA sample size",xlab="Between-cluster to within-cluster variance ratio",ylab="power")
+
 # dev.off()
 
 cols=vector()
@@ -278,9 +281,9 @@ lines(sort(vbet.vin3),TestPower3R[order(vbet.vin3)],type="b",lty=2,col="blue")
 abline(h = 0.8,lty=2)
 legend("bottomright", legend=c("ground truth:2 clusters","ground truth:3 clusters"),col=c("red", "blue","green"), lty=1:1, cex=0.8)
 
-plot(sort(vbet.vin2),memberAccuracy[order(vbet.vin2)],type="l",lty=2,col="blue",main="Membership Accuracy \n 2 clusters (equal sd within cluster,sample size = Injury sample size",xlab="Between-cluster to within-cluster variance ratio",ylab="Adjusted Rand Index")
-lines(sort(vbet.vin2),memberAccuracyDice[order(vbet.vin2)],type="l",lty=2,col="red")
-lines(sort(vbet.vin2),memberAccuracyKD[order(vbet.vin2)],type="l",lty=2,col="green")
+plot(sort(vbet.vin2),memberAccuracy[order(vbet.vin2)],type="b",lty=2,col="blue",main="Membership Accuracy \n 2 clusters (equal sd within cluster,sample size = Injury sample size",xlab="Between-cluster to within-cluster variance ratio",ylab="Adjusted Rand Index")
+lines(sort(vbet.vin2),memberAccuracyDice[order(vbet.vin2)],type="b",lty=2,col="red")
+lines(sort(vbet.vin2),memberAccuracyKD[order(vbet.vin2)],type="b",lty=2,col="green")
 legend("bottomright", legend=c("kmeans vs ground truth","diceR vs ground truth","kmeans vs diceR"),col=c("blue", "red","green"), lty=1:1, cex=0.8)
 
 
@@ -294,9 +297,7 @@ plot(sort(vbet.vin2),TestPower2R[order(vbet.vin2)],type="l",col="red",main="Powe
 lines(sort(vbet.vin3),TestPower3R[order(vbet.vin3)],type="l",lty=2,col="blue")
 abline(h = 0.8,lty=2)
 legend("bottomright", legend=c("ground truth:2 clusters","ground truth:3 clusters"),col=c("red", "blue","green"), lty=1:1, cex=0.8)
-plot(sort(vbet.vin3),TestPower3R[order(vbet.vin3)],type="l",lty=2,col="blue",main="f(K), Power to detect correct 3 clusters (equal sd wiwthin cluster,sample size = OA sample size",xlab="Between-cluster to within-cluster variance ratio",ylab="power")
-plot(sort(vbet.vin3),TestPower3R2[order(vbet.vin3)],type="l",lty=2,col="blue",main="NbClust, Power to detect correct 3 clusters (equal sd wiwthin cluster,sample size = OA sample size",xlab="Between-cluster to within-cluster variance ratio",ylab="power")
-plot(sort(vbet.vin3),TestPower3R3[order(vbet.vin3)],type="l",lty=2,col="blue",main="diceR,Power to detect correct 3 clusters (unequal sd wiwthin cluster,sample size = OA sample size",xlab="Between-cluster to within-cluster variance ratio",ylab="power")
+
 
 plot(sort(vbet.vin3),TestPower3R2[order(vbet.vin3)],type="l",lty=2,col="red",main="Power to detect correct 3 clusters (equal sd wiwthin cluster,sample size = Injury sample size",xlab="Between-cluster to within-cluster variance ratio",ylab="power")
 lines(sort(vbet.vin3),TestPower3R[order(vbet.vin3)],type="l",lty=2,col="blue")
