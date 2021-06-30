@@ -29,7 +29,7 @@ FkStatistic <- function(pcDat,thisk){
 # ftSz = topPCn
 ftSz = 10
 # smpSz = 
-smpSz = 219 ### injury:219
+smpSz = 219 ### injury
 X=matrix(0,nrow=smpSz,ncol=ftSz)
 trueLabel = vector(mode="integer",length=smpSz)
 
@@ -68,8 +68,14 @@ for(k in 1:varianceType){
 
 
 ### for 2 clusters
+### Injury: Power >1, mm=30, varianceType=50, alpha=20;  Power=k
+
 
 varianceType=50
+mm=30
+alpha=20
+maxCounter=30
+
 vbet.vin2 = vector(mode="numeric",length=varianceType)
 TestPower2R = vector(mode="numeric",length=varianceType)
 TestPower2 = vector(mode="numeric",length=varianceType)
@@ -78,13 +84,9 @@ sig_obj = vector(mode="numeric",length=varianceType)
 memberAccuracyDice = vector(mode="numeric",length=varianceType)
 memberAccuracyKD = vector(mode="numeric",length=varianceType)
 
-mm=30
-alpha=20
-
 ### generate simulated dataset X. 
 for(k in 1:varianceType){
   
-  maxCounter=30
   RecCluster = vector(mode="integer",length=maxCounter)
   for (testCounter in 1:maxCounter){  
     j=sample(1:smpSz,floor(smpSz/2),replace=FALSE) ### setting which sample is 1 or 2
@@ -120,7 +122,6 @@ for(k in 1:varianceType){
     
     if(length(which(fks<0.85))==0){RecCluster[testCounter] = 1}
     else{
-      # RecCluster[testCounter] = which(0.85-fks == min(abs(0.85-fks[which(0.85-fks>0)])))
       RecCluster[testCounter] = which(fks == min(fks))
     }
   }
@@ -148,11 +149,14 @@ temp = prcomp(X,scale = TRUE)$x
 pairs(temp[,1:5],col=cols)
 
 
-### for 3 clusters 
+### for 3 clusters. 
+### Injury: Power >1, mm=c(0,1,2),varianceType=100,ss=1,alpha=0.01; Power=k
+
 mm=c(0,1,2)
-varianceType=50
+varianceType=2
 ss=1
 alpha=0.01
+maxCounter=3
 # pdf("cluster3.pdf")
 # par(mfrow=c(1,3))
 vbet.vin3 = vector(mode="numeric",length=varianceType)
@@ -174,7 +178,6 @@ jc3=1
 ### equal sd, for TestPower3
 for(k in 1:varianceType){
   
-  maxCounter=30
   RecCluster = vector(mode="integer",length=maxCounter)
   RecCluster2 = vector(mode="integer",length=maxCounter)
   RecCluster3 = vector(mode="integer",length=maxCounter)
@@ -228,7 +231,8 @@ for(k in 1:varianceType){
     if(length(which(fks<0.85))==0){RecCluster[testCounter] = 1
     }else{
       RecCluster[testCounter] = which(fks==min(fks))
-      # RecCluster2[testCounter] <- length(unique(NbClust(data = X ,distance = "euclidean", min.nc = 2, max.nc = 15, method = "kmeans", index = "all", alphaBeale = 0.1)$Best.partition))
+      tempP <- NbClust(data = X ,distance = "euclidean", min.nc = 2, max.nc = 15, method = "kmeans", index = "all", alphaBeale = 0.1)$Best.partition
+      RecCluster2[testCounter] <- length(unique(tempP))
       # tempClust <- consensus_cluster(X, nk = 2:4, p.item = 0.8, reps = 5,algorithms = c("hc","km","hdbscan"))
       # RecCluster3[testCounter]  <- consensus_evaluate(X,tempClust,plot = FALSE)$k
     }
@@ -236,9 +240,10 @@ for(k in 1:varianceType){
   
   TestPower3[k] = length(which(RecCluster>1))/maxCounter
   TestPower3R[k] = length(which(RecCluster==3))/maxCounter
-  # TestPower3R2[k] = length(which(RecCluster2==3))/maxCounter
+  TestPower3R2[k] = length(which(RecCluster2==3))/maxCounter
   # TestPower3R3[k] = length(which(RecCluster3==3))/maxCounter
   memberAccuracy[k] = mclust::adjustedRandIndex(trueLabel,FkStatistic(X,3)[[3]])
+  memberAccuracy2[k] = mclust::adjustedRandIndex(trueLabel,tempP)
   # tempClust <- consensus_cluster(X, nk = 3, p.item = 0.8, reps = 5,algorithms = c("hc","km","hdbscan"))
   # CC <- apply(tempClust, 2:4, impute_knn, data = X, seed = 1)
   # CC_imputed <- impute_missing(CC, X, nk = 3)
@@ -249,8 +254,6 @@ for(k in 1:varianceType){
 }
 plot(sort(vbet.vin3),TestPower3[order(vbet.vin3)],type="b",lty=2,col="blue",main="Power to detect K>1, sample size = Injury group sample size",xlab="Between-cluster to within-cluster variance ratio",ylab="power")
 # dev.off()
-
-
 
 cols=vector()
 cols[j1] = "blue"
@@ -264,18 +267,16 @@ plot(sort(vbet.vin2),TestPower2[order(vbet.vin2)],type="b",col="red",main="Power
 lines(sort(vbet.vin3),TestPower3[order(vbet.vin3)],type="b",lty=2,col="blue")
 abline(h = 0.8,lty=2)
 legend("bottomright", legend=c("ground truth:2 clusters","ground truth:3 clusters"),col=c("red", "blue","green"), lty=1:1, cex=0.8)
-plot(sort(vbet.vin3),TestPower3[order(vbet.vin3)],type="b",lty=2,col="blue",main="Power to detect K>1, sample size = Injury group sample size",xlab="Between-cluster to within-cluster variance ratio",ylab="power")
 
-plot(sort(vbet.vin2),TestPower2[order(vbet.vin2)],type="l",col="red",main="Power to detect K>1 (unequal sd within cluster, sample size = OA group sample size)",xlab="Between-cluster to within-cluster variance ratio",ylab="power")
-lines(sort(vbet.vin3),TestPower3[order(vbet.vin3)],type="l",lty=2,col="blue")
+plot(sort(vbet.vin2),TestPower2[order(vbet.vin2)],type="b",col="red",main="Power to detect K>1 (unequal sd within cluster, sample size = OA group sample size)",xlab="Between-cluster to within-cluster variance ratio",ylab="power")
+lines(sort(vbet.vin3),TestPower3[order(vbet.vin3)],type="b",lty=2,col="blue")
 abline(h = 0.8,lty=2)
 legend("bottomright", legend=c("ground truth:2 clusters","ground truth:3 clusters"),col=c("red", "blue","green"), lty=1:1, cex=0.8)
 
-plot(sort(vbet.vin2),TestPower2R[order(vbet.vin2)],type="l",col="red",main="Power to detect correct K (equal sd within cluster, sample size = OA group sample size)",xlab="Between-cluster to within-cluster variance ratio",ylab="power")
-lines(sort(vbet.vin3),TestPower3R[order(vbet.vin3)],type="l",lty=2,col="blue")
+plot(sort(vbet.vin2),TestPower2R[order(vbet.vin2)],type="b",col="red",main="Power to detect correct K (equal sd within cluster, sample size = OA group sample size)",xlab="Between-cluster to within-cluster variance ratio",ylab="power")
+lines(sort(vbet.vin3),TestPower3R[order(vbet.vin3)],type="b",lty=2,col="blue")
 abline(h = 0.8,lty=2)
 legend("bottomright", legend=c("ground truth:2 clusters","ground truth:3 clusters"),col=c("red", "blue","green"), lty=1:1, cex=0.8)
-plot(sort(vbet.vin3),TestPower3R[order(vbet.vin3)],type="l",lty=2,col="blue",main="Power to detect correct 3 clusters (equal sd wiwthin cluster,sample size = OA sample size",xlab="Between-cluster to within-cluster variance ratio","Adjusted Rand Index")
 
 plot(sort(vbet.vin2),memberAccuracy[order(vbet.vin2)],type="l",lty=2,col="blue",main="Membership Accuracy \n 2 clusters (equal sd within cluster,sample size = Injury sample size",xlab="Between-cluster to within-cluster variance ratio",ylab="Adjusted Rand Index")
 lines(sort(vbet.vin2),memberAccuracyDice[order(vbet.vin2)],type="l",lty=2,col="red")
