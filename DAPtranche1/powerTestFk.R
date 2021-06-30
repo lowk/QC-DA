@@ -21,36 +21,6 @@ FkStatistic <- function(pcDat,thisk){
   return(list(fs,Sk,ClustLabel))
 }
 
-### local functions: for centroid and sd generation; if unequl sd not considered, not necessary to do this.
-# ### for 1 cluster
-# MMSS1 <- function(varianceType){
-#   ss = vector(mode="numeric",varianceType)
-#   ss[1]=2
-#   for (i in 2:varianceType){
-#     ss[i]=ss[1]-0.1*(i-1)
-#   }
-#   return(ss)
-# }
-# 
-# ### for 2 clusters
-# MMSSm2 <- function(equalSD,varianceType){
-#   if(equalSD == 1){
-#     mm = vector(mode="numeric",length=varianceType) 
-#     ss = rep(0.5,varianceType)   ### same variance ratio, equal sd within cluster have more power than unequal sd
-#     mm[1]=0
-#     for (i in 2:varianceType){
-#       mm[i]=mm[1]+0.2*(i-1)}
-#   } else {mm = vector(mode="numeric",length=varianceType) 
-#   ss = vector(mode="numeric",length=varianceType) 
-#   mm[1]=2
-#   ss[1]=2
-#   for (i in 2:varianceType){
-#     mm[i]=mm[1]+0.2*(i-1)
-#     ss[i]=ss[1]-0.1*(i-1)}
-#   }
-#   return(list(mm,ss))
-# }
-
 ### define sample size based on our case
 # exprDat_normX = exprDat_norm[which(MetaRaw[,"diseaseGroup"]=="Injury"),]
 # 
@@ -107,8 +77,6 @@ sig_obj = vector(mode="numeric",length=varianceType)
 memberAccuracyDice = vector(mode="numeric",length=varianceType)
 memberAccuracyKD = vector(mode="numeric",length=varianceType)
 
-# mm = MMSSm2(1,10)[[1]]
-# ss = MMSSm2(1,10)[[2]]
 mm=20
 alpha=20
 ### generate simulated dataset X. 
@@ -124,42 +92,15 @@ for(k in 1:varianceType){
         else{X[i,colI]=rnorm(1, mean=-0.1*colI, sd=alpha*k)}
       }
       trueLabel[i]=1
-      }
+    }
     else{
       for (colI in 1:ftSz){
         if(colI %in% tt){X[i,colI]=rnorm(1, mean=mm+ alpha*colI, sd=alpha*k)}
         else{X[i,colI]=rnorm(1, mean=mm-0.1*colI, sd=alpha*k)}
       }
       trueLabel[i]=2
-      }
+    }
   }
-  
-  ### X is orthogonal 
-  # for (i in 1:smpSz){
-  #   if(i %in% j){
-  #     
-  #     if(i%%ftSz==0){X[i,ftSz]=rnorm(1, mean=mm[1], sd=ss[1])
-  #     X[i,!ftSz]=0}
-  #     
-  #     else{for (colI in 1:ftSz)
-  #     {if(colI == i%%ftSz){X[i,colI]=rnorm(1, mean=mm[1], sd=ss[1])}
-  #       else{{X[i,colI]=0}
-  #       }
-  #       trueLabel[i]=1}}
-  #   }
-  #   
-  #   else{
-  #     
-  #     if(i%%ftSz==0){X[i,ftSz]=rnorm(1, mean=mm[k+1], sd=ss[k+1])
-  #     X[i,!ftSz]=0}
-  #     
-  #     else{for (colI in 1:ftSz)
-  #     {if(colI == i%%ftSz){X[i,colI]=rnorm(1, mean=mm[k+1], sd=ss[k+1])}
-  #       else{X[i,colI]=0}
-  #     }
-  #       trueLabel[i]=2}
-  #   }
-  # }
   
   cen1 = apply(X[j,],2,mean)
   cen2 = apply(X[-j,],2,mean)
@@ -205,210 +146,107 @@ temp = prcomp(X,scale = TRUE)$x
 pairs(temp[,1:5],col=cols)
 
 
-### for 3 clusters
-### injury, equal sd, power >1, mm=(1,1000,10),ss=20,k=0.05
-### injury, unequal sd, power = k, mm=(1,1000,10),ss=6,k=0.01,0.04,0.06
-
-# mm = seq(1,1000,10)
+### for 3 clusters 
 mm=c(10,20,30)
-ss = 1
-
-varianceType=20
-vbet.vin3 = vector(mode="numeric",length=varianceType-2)
-TestPower3R = vector(mode="numeric",length=varianceType-2)
-TestPower3R2 = vector(mode="numeric",length=varianceType-2)
-TestPower3R3 = vector(mode="numeric",length=varianceType-2)
-TestPower3 = vector(mode="numeric",length=varianceType-2)
-memberAccuracy = vector(mode="numeric",length=varianceType-1)
-memberAccuracyDice = vector(mode="numeric",length=varianceType-2)
-memberAccuracyKD = vector(mode="numeric",length=varianceType-2)
-
-j1 = vector(mode="integer")
-j2= vector(mode="integer")
-j3= vector(mode="integer")
-jc1=1
-jc2=1
-jc3=1
-
-### equal sd, for TestPower3
-for(k in 1:varianceType){
-  for (i in 1:smpSz){
-    if(i<floor(smpSz/3)){
-      tt = sample(1:ftSz,floor(ftSz/2),replace=FALSE)
-      for(ttt in 1:ftSz){
-        if(ttt %in% tt){X[i,ttt]=rnorm(1, mean=mm[1]+0.1*ttt, sd=ss+0.05*k)}
-        else{X[i,ttt]=rnorm(1, mean=mm[1]-0.1*ttt, sd=ss+0.05*k)}
-      }
-      trueLabel[i]=1
-      j1[jc1]=i
-      jc1=jc1+1}
-    else if(i>2*smpSz/3){
-      tt = sample(1:ftSz,floor(ftSz/2),replace=FALSE)
-      for(ttt in 1:ftSz){
-        if(ttt %in% tt){X[i,ttt]=rnorm(1, mean=mm[2]+0.1*ttt, sd=ss+0.05*k)}
-        else{X[i,ttt]=rnorm(1, mean=mm[2]-0.1*ttt, sd=ss+0.05*k)}
-      }
-      trueLabel[i]=3
-      j2[jc2]=i
-      jc2=jc2+1}
-    else{
-      tt = sample(1:ftSz,floor(ftSz/2),replace=FALSE)
-      for(ttt in 1:ftSz){
-        if(ttt %in% tt){X[i,ttt]=rnorm(1, mean=mm[3]+0.1*ttt, sd=ss+0.05*k)}
-        else{X[i,ttt]=rnorm(1, mean=mm[3]-0.1*ttt, sd=ss+0.05*k)}
-      }
-      trueLabel[i]=2
-      j3[jc3]=i
-      jc3=jc3+1}
-  }
-
-
-### unequal sd for TestPower3
-# for(k in seq(1,varianceType-2,10)){
-#   for (i in 1:smpSz){
-#     if(i<floor(smpSz/3)){X[i,]=rnorm(ftSz, mean=mm[1], sd=ss-0.04*k)
-#     trueLabel[i]=1
-#     j1[jc1]=i
-#     jc1=jc1+1}
-#     else if(i>2*smpSz/3){X[i,]=rnorm(ftSz, mean=mm[5], sd=ss-0.06*k)
-#     trueLabel[i]=3
-#     j2[jc2]=i
-#     jc2=jc2+1}
-#     else{X[i,]=rnorm(ftSz, mean=mm[9], sd=ss-0.01*k)
-#     trueLabel[i]=2
-#     j3[jc3]=i
-#     jc3=jc3+1}
-#   }
-
-# ### equal sd, for TestPower3R
-# for(k in seq(1,varianceType-2,10)){
-#   for (i in 1:smpSz){
-#     if(i<floor(smpSz/3)){X[i,]=rnorm(ftSz, mean=mm[1], sd=ss-0.01*k)
-#     j1[jc1]=i
-#     jc1=jc1+1}
-#     else if(i>2*smpSz/3){X[i,]=rnorm(ftSz, mean=mm[3], sd=ss-0.01*k)
-#     j2[jc2]=i
-#     jc2=jc2+1}
-#     else{X[i,]=rnorm(ftSz, mean=mm[5], sd=ss-0.01*k)
-#     j3[jc3]=i
-#     jc3=jc3+1}
-#   }
-#   
-# for(k in seq(1,varianceType-2,10)){
-#   
-#   for (i in 1:smpSz){
-#     if(i<floor(smpSz/3)){X[i,]=rnorm(ftSz, mean=mm[1]+k*2, sd=ss)
-#     j1[jc1]=i
-#     jc1=jc1+1}
-#     else if(i>2*smpSz/3){X[i,]=rnorm(ftSz, mean=mm[5]+k*2, sd=ss)
-#     j2[jc2]=i
-#     jc2=jc2+1}
-#     else{X[i,]=rnorm(ftSz, mean=mm[9]+k*2, sd=ss)
-#     j3[jc3]=i
-#     jc3=jc3+1}
-#   }
-
-# for(k in seq(1,varianceType-2,10)){
-#   
-#   for (i in 1:smpSz){
-#     if(i<floor(smpSz/3)){X[i,]=rnorm(ftSz, mean=mm[1]+k*2, sd=ss+0.1*k)
-#     j1[jc1]=i
-#     jc1=jc1+1}
-#     else if(i>2*smpSz/3){X[i,]=rnorm(ftSz, mean=mm[5]+k*2, sd=ss+0.2*k)
-#     j2[jc2]=i
-#     jc2=jc2+1}
-#     else{X[i,]=rnorm(ftSz, mean=mm[9]+k*2, sd=ss+0.3*k)
-#     j3[jc3]=i
-#     jc3=jc3+1}
-#   }  
-
-# for(k in 1:varianceType){
-#   for (i in 1:smpSz){
-#     
-#     if(i<floor(smpSz/3)){
-#       
-#       if(i%%ftSz==0){X[i,ftSz]=rnorm(1, mean=mm, sd=ss)
-#       X[i,!ftSz]=0}
-#       
-#       else{for (colI in 1:ftSz)
-#       {if(colI == i%%ftSz){X[i,colI]=rnorm(1, mean=mm, sd=ss)}
-#         else{X[i,colI]=0}
-#       }
-#         trueLabel[i]=1
-#         j1[jc1]=i
-#         jc1=jc1+1}
-#     }
-#     
-#     else if(i>2*smpSz/3){
-#       if(i%%ftSz==0){X[i,ftSz]=rnorm(1, mean=mm+k*100, sd=ss)
-#       X[i,!ftSz]=0}
-#       
-#       else{for (colI in 1:ftSz)
-#       {if(colI == i%%ftSz){X[i,colI]=rnorm(1, mean=mm+k*100, sd=ss)}
-#         else{X[i,colI]=0}
-#       }
-#         trueLabel[i]=3
-#         j2[jc2]=i
-#         jc2=jc2+1}
-#     }
-#     
-#     else{
-#       if(i%%ftSz==0){X[i,ftSz]=rnorm(1, mean=mm+k*200, sd=ss)
-#       X[i,!ftSz]=0}
-#       
-#       else{for (colI in 1:ftSz)
-#       {if(colI == i%%ftSz){X[i,colI]=rnorm(1, mean=mm+k*200, sd=ss)}
-#         else{X[i,colI]=0}
-#       }
-#         trueLabel[i]=3
-#         j2[jc2]=i
-#         jc2=jc2+1}
-#       trueLabel[i]=2
-#       j3[jc3]=i
-#       jc3=jc3+1}
-#   }
+varianceType=100
+pdf("cluster3.pdf")
+par(mfrow=c(1,3))
+for (ss in seq(0,50,2)){
+  vbet.vin3 = vector(mode="numeric",length=varianceType)
+  TestPower3R = vector(mode="numeric",length=varianceType)
+  TestPower3R2 = vector(mode="numeric",length=varianceType)
+  TestPower3R3 = vector(mode="numeric",length=varianceType)
+  TestPower3 = vector(mode="numeric",length=varianceType)
+  memberAccuracy = vector(mode="numeric",length=varianceType)
+  memberAccuracyDice = vector(mode="numeric",length=varianceType)
+  memberAccuracyKD = vector(mode="numeric",length=varianceType)
   
-  cen1 = apply(X[j1,],2,mean)
-  cen2 = apply(X[j2,],2,mean)
-  cen3 = apply(X[j3,],2,mean)
-  vbet = (sqrt(apply(as.matrix((cen1-cen2)^2),2,sum))+sqrt(apply(as.matrix((cen2-cen3)^2),2,sum))+
-            sqrt(apply(as.matrix((cen1-cen3)^2),2,sum)))/3
-  vin = (sum(sqrt(apply((apply(X[j1,],1,function(x){(x-cen1)^2})),2,sum))) + 
-           sum(sqrt(apply((apply(X[j2,],1,function(x){(x-cen2)^2})),2,sum)))+
-           sum(sqrt(apply((apply(X[j3,],1,function(x){(x-cen3)^2})),2,sum))))/nrow(X)
-  vbet.vin3[k] = vbet/vin
+  j1 = vector(mode="integer")
+  j2= vector(mode="integer")
+  j3= vector(mode="integer")
+  jc1=1
+  jc2=1
+  jc3=1
   
-  maxCounter=5
-  RecCluster = vector(mode="integer",length=maxCounter)
-  RecCluster2 = vector(mode="integer",length=maxCounter)
-  RecCluster3 = vector(mode="integer",length=maxCounter)
-  
-  for (testCounter in 1:maxCounter){
-    fks = vector(mode="numeric",length=6)
-    for (myK in 1:6){fks[myK] <-FkStatistic(X,myK)[[1]]}
-    
-    if(length(which(fks<0.85))==0){RecCluster[testCounter] = 1
-    }else{
-      RecCluster[testCounter] = which(fks==min(fks))
-      RecCluster2[testCounter] <- length(unique(NbClust(data = X ,distance = "euclidean", min.nc = 2, max.nc = 15, method = "kmeans", index = "all", alphaBeale = 0.1)$Best.partition))
-      tempClust <- consensus_cluster(X, nk = 2:4, p.item = 0.8, reps = 5,algorithms = c("hc","km","hdbscan"))
-      RecCluster3[testCounter]  <- consensus_evaluate(X,tempClust,plot = FALSE)$k
+  ### equal sd, for TestPower3
+  for(k in 1:varianceType){
+    for (i in 1:smpSz){
+      if(i<floor(smpSz/3)){
+        tt = sample(1:ftSz,floor(ftSz/2),replace=FALSE)
+        for(ttt in 1:ftSz){
+          if(ttt %in% tt){X[i,ttt]=rnorm(1, mean=mm[1]+0.1*ttt, sd=ss+0.05*k)}
+          else{X[i,ttt]=rnorm(1, mean=mm[1]-0.1*ttt, sd=ss+0.05*k)}
+        }
+        trueLabel[i]=1
+        j1[jc1]=i
+        jc1=jc1+1}
+      else if(i>2*smpSz/3){
+        tt = sample(1:ftSz,floor(ftSz/2),replace=FALSE)
+        for(ttt in 1:ftSz){
+          if(ttt %in% tt){X[i,ttt]=rnorm(1, mean=mm[2]+0.1*ttt, sd=ss+0.05*k)}
+          else{X[i,ttt]=rnorm(1, mean=mm[2]-0.1*ttt, sd=ss+0.05*k)}
+        }
+        trueLabel[i]=3
+        j2[jc2]=i
+        jc2=jc2+1}
+      else{
+        tt = sample(1:ftSz,floor(ftSz/2),replace=FALSE)
+        for(ttt in 1:ftSz){
+          if(ttt %in% tt){X[i,ttt]=rnorm(1, mean=mm[3]+0.1*ttt, sd=ss+0.05*k)}
+          else{X[i,ttt]=rnorm(1, mean=mm[3]-0.1*ttt, sd=ss+0.05*k)}
+        }
+        trueLabel[i]=2
+        j3[jc3]=i
+        jc3=jc3+1}
     }
     
-    TestPower3[k] = length(which(RecCluster>1))/maxCounter
-    TestPower3R[k] = length(which(RecCluster==3))/maxCounter
-    TestPower3R2[k] = length(which(RecCluster2==3))/maxCounter
-    TestPower3R3[k] = length(which(RecCluster3==3))/maxCounter
-    memberAccuracy[k] = mclust::adjustedRandIndex(trueLabel,FkStatistic(X,3)[[3]])
-    tempClust <- consensus_cluster(X, nk = 3, p.item = 0.8, reps = 5,algorithms = c("hc","km","hdbscan"))
-    # CC <- apply(tempClust, 2:4, impute_knn, data = X, seed = 1)
-    # CC_imputed <- impute_missing(CC, X, nk = 3)
-    # sig_obj[k] <- sigclust(X, k = 3, nsim = 100, labflag = 0, label = CC_imputed)
-    memberDiceR <- apply(tempClust,1,function(x){names(which.max(table(x)))})
-    memberAccuracyDice[k] = mclust::adjustedRandIndex(trueLabel,memberDiceR)
-    memberAccuracyKD[k] = mclust::adjustedRandIndex(memberDiceR,FkStatistic(X,3)[[3]])
+    
+    cen1 = apply(X[j1,],2,mean)
+    cen2 = apply(X[j2,],2,mean)
+    cen3 = apply(X[j3,],2,mean)
+    vbet = (sqrt(apply(as.matrix((cen1-cen2)^2),2,sum))+sqrt(apply(as.matrix((cen2-cen3)^2),2,sum))+
+              sqrt(apply(as.matrix((cen1-cen3)^2),2,sum)))/3
+    vin = (sum(sqrt(apply((apply(X[j1,],1,function(x){(x-cen1)^2})),2,sum))) + 
+             sum(sqrt(apply((apply(X[j2,],1,function(x){(x-cen2)^2})),2,sum)))+
+             sum(sqrt(apply((apply(X[j3,],1,function(x){(x-cen3)^2})),2,sum))))/nrow(X)
+    vbet.vin3[k] = vbet/vin
+    
+    maxCounter=5
+    RecCluster = vector(mode="integer",length=maxCounter)
+    RecCluster2 = vector(mode="integer",length=maxCounter)
+    RecCluster3 = vector(mode="integer",length=maxCounter)
+    
+    for (testCounter in 1:maxCounter){
+      fks = vector(mode="numeric",length=6)
+      for (myK in 1:6){fks[myK] <-FkStatistic(X,myK)[[1]]}
+      
+      if(length(which(fks<0.85))==0){RecCluster[testCounter] = 1
+      }else{
+        RecCluster[testCounter] = which(fks==min(fks))
+        # RecCluster2[testCounter] <- length(unique(NbClust(data = X ,distance = "euclidean", min.nc = 2, max.nc = 15, method = "kmeans", index = "all", alphaBeale = 0.1)$Best.partition))
+        # tempClust <- consensus_cluster(X, nk = 2:4, p.item = 0.8, reps = 5,algorithms = c("hc","km","hdbscan"))
+        # RecCluster3[testCounter]  <- consensus_evaluate(X,tempClust,plot = FALSE)$k
+      }
+      
+      TestPower3[k] = length(which(RecCluster>1))/maxCounter
+      TestPower3R[k] = length(which(RecCluster==3))/maxCounter
+      # TestPower3R2[k] = length(which(RecCluster2==3))/maxCounter
+      # TestPower3R3[k] = length(which(RecCluster3==3))/maxCounter
+      memberAccuracy[k] = mclust::adjustedRandIndex(trueLabel,FkStatistic(X,3)[[3]])
+      # tempClust <- consensus_cluster(X, nk = 3, p.item = 0.8, reps = 5,algorithms = c("hc","km","hdbscan"))
+      # CC <- apply(tempClust, 2:4, impute_knn, data = X, seed = 1)
+      # CC_imputed <- impute_missing(CC, X, nk = 3)
+      # sig_obj[k] <- sigclust(X, k = 3, nsim = 100, labflag = 0, label = CC_imputed)
+      # memberDiceR <- apply(tempClust,1,function(x){names(which.max(table(x)))})
+      # memberAccuracyDice[k] = mclust::adjustedRandIndex(trueLabel,memberDiceR)
+      # memberAccuracyKD[k] = mclust::adjustedRandIndex(memberDiceR,FkStatistic(X,3)[[3]])
+    }
   }
+  plot(sort(vbet.vin3),TestPower3[order(vbet.vin3)],type="b",lty=2,col="blue",main="Power to detect K>1, sample size = Injury group sample size",xlab="Between-cluster to within-cluster variance ratio",ylab="power")
 }
+dev.off()
+
+
 
 cols=vector()
 cols[j1] = "blue"
@@ -418,11 +256,11 @@ pairs(X[,1:5],col=cols)
 temp = prcomp(X,scale = TRUE)$x
 pairs(temp[,1:5],col=cols)
 
-plot(sort(vbet.vin2),TestPower2[order(vbet.vin2)],type="l",col="red",main="Power to detect K>1 (equal sd within cluster, (sample size = Injury group sample size)",xlab="Between-cluster to within-cluster variance ratio",ylab="power")
-lines(sort(vbet.vin3),TestPower3[order(vbet.vin3)],type="l",lty=2,col="blue")
+plot(sort(vbet.vin2),TestPower2[order(vbet.vin2)],type="b",col="red",main="Power to detect K>1, sample size = Injury group sample size",xlab="Between-cluster to within-cluster variance ratio",ylab="power")
+lines(sort(vbet.vin3),TestPower3[order(vbet.vin3)],type="b",lty=2,col="blue")
 abline(h = 0.8,lty=2)
 legend("bottomright", legend=c("ground truth:2 clusters","ground truth:3 clusters"),col=c("red", "blue","green"), lty=1:1, cex=0.8)
-plot(sort(vbet.vin3),TestPower3[order(vbet.vin3)],type="l",lty=2,col="blue",main="Power to detect correct 3 clusters (equal sd wiwthin cluster,sample size = OA sample size",xlab="Between-cluster to within-cluster variance ratio","Adjusted Rand Index")
+plot(sort(vbet.vin3),TestPower3[order(vbet.vin3)],type="b",lty=2,col="blue",main="Power to detect K>1, sample size = Injury group sample size",xlab="Between-cluster to within-cluster variance ratio",ylab="power")
 
 plot(sort(vbet.vin2),TestPower2[order(vbet.vin2)],type="l",col="red",main="Power to detect K>1 (unequal sd within cluster, sample size = OA group sample size)",xlab="Between-cluster to within-cluster variance ratio",ylab="power")
 lines(sort(vbet.vin3),TestPower3[order(vbet.vin3)],type="l",lty=2,col="blue")
