@@ -86,8 +86,10 @@ memberAccuracyKD = vector(mode="numeric",length=varianceType)
 ### generate simulated dataset X. 
 for(k in 1:varianceType){
   
+  RecCluster = vector(mode="integer",length=maxCounter)
+  
   for (testCounter in 1:maxCounter){  
-    RecCluster = vector(mode="integer",length=maxCounter)
+    
     j=sample(1:smpSz,floor(smpSz/2),replace=FALSE) ### setting which sample is 1 or 2
     tt=sample(1:ftSz,floor(ftSz/2),replace=FALSE)  ### setting which feature have mean + tt or mean - tt
     
@@ -137,7 +139,7 @@ for(k in 1:varianceType){
   memberAccuracyKD[k] = mclust::adjustedRandIndex(memberDiceR,FkStatistic(X,3)[[3]]) ### membership consistency between kmeans and concensus
 }
 
-plot(sort(vbet.vin2),TestPower2[order(vbet.vin2)],type="b",col="red",main="Power to detect K>1, sample size = Injury group sample size",xlab="Between-cluster to within-cluster variance ratio",ylab="power")
+plot(sort(vbet.vin2),memberAccuracy[order(vbet.vin2)],type="b",col="red",main="Power to detect K>1, sample size = Injury group sample size",xlab="Between-cluster to within-cluster variance ratio",ylab="power")
 
 cols=vector()
 cols[j] = "blue"
@@ -178,10 +180,12 @@ jc3=1
 ### equal sd, for TestPower3
 for(k in 1:varianceType){
   
+  RecCluster = vector(mode="integer",length=maxCounter)
+  RecCluster2 = vector(mode="integer",length=maxCounter)
+  RecCluster3 = vector(mode="integer",length=maxCounter)
+  
   for (testCounter in 1:maxCounter){
-    RecCluster = vector(mode="integer",length=maxCounter)
-    RecCluster2 = vector(mode="integer",length=maxCounter)
-    RecCluster3 = vector(mode="integer",length=maxCounter)
+    
     for (i in 1:smpSz){
       if(i<floor(smpSz/3)){
         tt = sample(1:ftSz,floor(ftSz/2),replace=FALSE)
