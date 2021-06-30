@@ -69,7 +69,7 @@ for(k in 1:varianceType){
 
 ### for 2 clusters
 
-varianceType=10
+varianceType=50
 vbet.vin2 = vector(mode="numeric",length=varianceType)
 TestPower2R = vector(mode="numeric",length=varianceType)
 TestPower2 = vector(mode="numeric",length=varianceType)
@@ -78,7 +78,7 @@ sig_obj = vector(mode="numeric",length=varianceType)
 memberAccuracyDice = vector(mode="numeric",length=varianceType)
 memberAccuracyKD = vector(mode="numeric",length=varianceType)
 
-mm=20
+mm=30
 alpha=20
 
 ### generate simulated dataset X. 
