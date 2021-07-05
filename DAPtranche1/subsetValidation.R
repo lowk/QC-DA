@@ -2,6 +2,8 @@
 library(MASS)
 library(NbClust)
 library(mclust)
+library(dbscan)
+
 
 #f(K) statistics:Nd=10
 getALFA <- function(thisk,Nd){
@@ -83,6 +85,6 @@ memHC <- as.numeric(apply(cc1$indices$trim$E.new[[1]],1,function(x){names(sort(s
 similairyKmHc <- mclust::adjustedRandIndex(memHC,ClustType)
 
 cc1 <- diceR::consensus_cluster(pcDat, nk =2:6,reps = 5, algorithms = c("hdbscan"),progress = FALSE)
-BestCN4 <- sort(table(attr(cc1,"hdbscan")$num_cluster),decreasing=TRUE)[1]
+BestCN4 <- names(sort(table(attr(cc1,"hdbscan")$num_cluster),decreasing=TRUE)[1])
+memDB <- dbscan::hdbscan(pcDat, minPts = 50)
 
-mclust::adjustedRandIndex(ClustType,cc2$`2`)
