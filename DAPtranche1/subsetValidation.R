@@ -2,7 +2,6 @@
 library(MASS)
 library(NbClust)
 library(mclust)
-library(diceR)
 
 #f(K) statistics:Nd=10
 getALFA <- function(thisk,Nd){
@@ -74,10 +73,16 @@ if(!any(fks<0.85)){print("only 1 cluster detected")
 }
 
 
-### PAC (Proportion of Ambiguous Clusters) based concensus clustering, using hierachical clustering and DBSCAN
-CC1 <- diceR::consensus_cluster(pcDat, nk =2, p.item = 0.8, reps = 5,algorithms = c("hdbscan"))
-consensus_evaluate(pcDat,CC1)
-CC2 <- diceR::consensus_cluster(pcDat, nk =2, p.item = 0.8, reps = 5,algorithms = c("hc"))
+### PAC (Proportion of Ambiguous Clusters) based consensus clustering, using 
+cc1 <- dice(pcDat, nk = 2:6, reps = 5, algorithms = c("km"),cons.funs = c("kmodes", "majority"))
+BestCN2 <- cc1$indices$pac$k[which(cc1$indices$pac$KM==min(cc1$indices$pac$KM))]
 
-sig_obj <- sigclust(pcDat, k = 2, nsim = 10, labflag = 0)
+cc1 <- dice(pcDat, nk = 2:6, reps = 5, algorithms = c("hc"),cons.funs = c("kmodes", "majority"))
+BestCN3 <- cc1$indices$pac$k[which(cc1$indices$pac$HC_Euclidean==min(cc1$indices$pac$HC_Euclidean))]
+memHC <- as.numeric(apply(cc1$indices$trim$E.new[[1]],1,function(x){names(sort(summary(as.factor(x)), decreasing=T))[1]}))
+similairyKmHc <- mclust::adjustedRandIndex(memHC,ClustType)
 
+cc1 <- diceR::consensus_cluster(pcDat, nk =2:6,reps = 5, algorithms = c("hdbscan"),progress = FALSE)
+BestCN4 <- sort(table(attr(cc1,"hdbscan")$num_cluster),decreasing=TRUE)[1]
+
+mclust::adjustedRandIndex(ClustType,cc2$`2`)
