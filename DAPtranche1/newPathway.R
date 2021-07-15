@@ -2,6 +2,9 @@
 library(WGCNA)
 library(GENIE3)
 library(igraph)
+library(RCy3)
+library(MCL)
+library(dcGOR) 
 
 exprDat_normX = exprDat_norm[which(MetaRaw[,"diseaseGroup"]=="OA"),]
 
@@ -63,8 +66,6 @@ for (clusterCounter in 1:length(clusterName)){
   clusterListID[[clusterCounter]] = which(dynamicColors==clusterName[clusterCounter])
 }
 names(clusterListID)= strsplit(paste("X",seq(1:length(MEs)),collapse=",",sep=""),",")[[1]]### such naming for compareCluster
-#names(clusterList)=c("X1","X2","X3") ### such naming for compareCluster
-#names(clusterList)=c("X1","X2","X3","X4","X5")
 
 ### k master regulators will be investigated within per module
 k=5
@@ -85,8 +86,41 @@ for (clusterCounter in 1:length(clusterListID)){
 }
 
 masterRexp = exprDat_normX[,as.vector(masterRegName)]
-weightMat <- GENIE3(cov(masterRexp,masterRexp), treeMethod="ET", K=7, nTrees=50)
+weightMat <- GENIE3(cov(masterRexp,masterRexp), treeMethod="ET", K=7, nTrees=10000)
 netRaw <-getLinkList(weightMat,threshold=0.05)
 adjM <- get.adjacency(graph.edgelist(as.matrix(netRaw[,1:2]), directed=TRUE))
+vertex.display = ColTable[which(ColTable[,"Protein Name"] %in% colnames(adjM) ),"EntrezGeneSymbol"]
 gra <- graph_from_adjacency_matrix(adjM, mode = "directed", weighted = TRUE,diag = FALSE, add.colnames = NULL, add.rownames = NA)
-plot(gra, vertex.size=1, vertex.color="red",vertex.label.font=0.5, vertex.label.cex=.5,arrow.width=0.05,vertex.label.dist=1.5,vertex.label.color="black",rescale = TRUE)
+plot(gra, vertex.label=vertex.display,vertex.size=1, vertex.color="red",vertex.label.font=0.5, vertex.label.cex=.5,edge.arrow.size=0.3,arrow.width=1,vertex.label.dist=1.5,vertex.label.color="black",rescale = TRUE)
+
+### nothing special in CytoScape. STRING has its limitation
+masterRegUniProID = ColTable[which(ColTable[,1] %in% as.vector(masterRegName)),2]
+string_interaction_cmd <- paste('string protein query taxonID=9606 limit=150 cutoff=0.9 query="',masterRegUniProID,'"',sep="")
+response <- commandsGET(string_interaction_cmd)
+
+### MCL on proposed pathway
+MCLcluster <- mcl(x = adjM, addLoops = TRUE, allow1 = FALSE)
+
+MCLmem = rownames(adjM)[which(MCLcluster$Cluster==3)]
+
+masterRegUniProID2 = ColTable[which(ColTable[,1] %in% MCLmem),2]
+
+plot(gra, vertex.label=vertex.display, vertex.color=MCLcluster$Cluste, vertex.size=3, vertex.label.font=0.5, vertex.label.cex=.5,edge.arrow.size=0.3,arrow.width=1,vertex.label.dist=1.5,vertex.label.color="black",rescale = TRUE)
+
+dcDAGdomainSim(gra, domains = NULL, method.domain = c("BM.average","BM.max","BM.complete", "average", "max"), method.term = c("Resnik", "Lin", "Schlicker", "Jiang", "Pesquita"), force = TRUE, fast = TRUE,
+               parallel = TRUE, multicores = NULL, verbose = TRUE)
+
+
+g <- dcRDataLoader('onto.GOMF')
+Anno <- dcRDataLoader('SCOP.sf2GOMF')
+dag <- dcDAGannotate(g, annotations=Anno, path.mode="shortest_paths",verbose=TRUE)
+alldomains <- unique(unlist(nInfo(dag)$annotations))
+domains <- sample(alldomains,10)
+dnetwork <- dcDAGdomainSim(g=dag, domains=domains,
+                           method.domain="BM.average", method.term="Resnik", parallel=FALSE,
+                           verbose=TRUE)
+dnetwork
+data <- data.frame(aSeeds=c(1,0,1,0,1), bSeeds=c(0,0,1,0,1))
+rownames(data) <- id(dnetwork)[1:5]
+coutput <- dcRWRpipeline(data=data, g=dnetwork, parallel=FALSE)
+coutput
