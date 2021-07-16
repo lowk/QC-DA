@@ -107,15 +107,11 @@ MCLcluster <- mcl(x = adjM, addLoops = TRUE, allow1 = FALSE)
 
 plot(gra, vertex.label=vertex.display, vertex.color=MCLcluster$Cluste, vertex.size=3, vertex.label.font=0.5, vertex.label.cex=.5,edge.arrow.size=0.3,arrow.width=1,vertex.label.dist=1.5,vertex.label.color="black",rescale = TRUE)
 
-### find common domain among all the regulators
-edb <- EnsDb.Hsapiens.v86 ### load in database
+edb <- EnsDb.Hsapiens.v86 ### load domain database
 
+### find common domain among all the regulators
 MCLmem = rownames(adjM)
 
-### find common domain among all the regulators
-commonDomain = list()
-
-MCLclust <- unique(MCLcluster$Cluster)
 masterRegEntrezSym = ColTable[which(ColTable[,1] %in% MCLmem),4]
 masterRegDomain <- select(edb, keys = masterRegEntrezSym, keytype = "GENENAME",
                           columns = c("PROTEINDOMAINID","PROTEINDOMAINSOURCE"))
@@ -128,6 +124,9 @@ CommonDomain <- fullDomainList[duplicatedID]
 masterRegDomain[which(masterRegDomain$PROTEINDOMAINID == CommonDomain),]
 
 ### find common domain within each cluster
+commonDomain = list()
+
+MCLclust <- unique(MCLcluster$Cluster)
 
 for(clusC in 1:length(MCLclust)){
   
