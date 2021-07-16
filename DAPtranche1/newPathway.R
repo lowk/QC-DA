@@ -4,7 +4,8 @@ library(GENIE3)
 library(igraph)
 library(RCy3)
 library(MCL)
-library(dcGOR) 
+library(ensembldb)
+library(EnsDb.Hsapiens.v86)
 
 exprDat_normX = exprDat_norm[which(MetaRaw[,"diseaseGroup"]=="OA"),]
 
@@ -85,9 +86,12 @@ for (clusterCounter in 1:length(clusterListID)){
   masterRegName[clusterCounter,] = vertex.name
 }
 
+### expression profile of master regulators applied to GENIE3
 masterRexp = exprDat_normX[,as.vector(masterRegName)]
-weightMat <- GENIE3(cov(masterRexp,masterRexp), treeMethod="ET", K=7, nTrees=10000)
+weightMat <- GENIE3(cov(masterRexp,masterRexp), treeMethod="ET", K=10, nTrees=10000)
 netRaw <-getLinkList(weightMat,threshold=0.05)
+
+### retrieve regulatory network nodes and edge information, plot network
 adjM <- get.adjacency(graph.edgelist(as.matrix(netRaw[,1:2]), directed=TRUE))
 vertex.display = ColTable[which(ColTable[,"Protein Name"] %in% colnames(adjM) ),"EntrezGeneSymbol"]
 gra <- graph_from_adjacency_matrix(adjM, mode = "directed", weighted = TRUE,diag = FALSE, add.colnames = NULL, add.rownames = NA)
@@ -101,26 +105,47 @@ response <- commandsGET(string_interaction_cmd)
 ### MCL on proposed pathway
 MCLcluster <- mcl(x = adjM, addLoops = TRUE, allow1 = FALSE)
 
-MCLmem = rownames(adjM)[which(MCLcluster$Cluster==3)]
-
-masterRegUniProID2 = ColTable[which(ColTable[,1] %in% MCLmem),2]
-
 plot(gra, vertex.label=vertex.display, vertex.color=MCLcluster$Cluste, vertex.size=3, vertex.label.font=0.5, vertex.label.cex=.5,edge.arrow.size=0.3,arrow.width=1,vertex.label.dist=1.5,vertex.label.color="black",rescale = TRUE)
 
-dcDAGdomainSim(gra, domains = NULL, method.domain = c("BM.average","BM.max","BM.complete", "average", "max"), method.term = c("Resnik", "Lin", "Schlicker", "Jiang", "Pesquita"), force = TRUE, fast = TRUE,
-               parallel = TRUE, multicores = NULL, verbose = TRUE)
+### find common domain among all the regulators
+edb <- EnsDb.Hsapiens.v86 ### load in database
+
+MCLmem = rownames(adjM)
+
+### find common domain among all the regulators
+commonDomain = list()
+
+MCLclust <- unique(MCLcluster$Cluster)
+masterRegEntrezSym = ColTable[which(ColTable[,1] %in% MCLmem),4]
+masterRegDomain <- select(edb, keys = masterRegEntrezSym, keytype = "GENENAME",
+                          columns = c("PROTEINDOMAINID","PROTEINDOMAINSOURCE"))
+
+fullDomainList <- masterRegDomain$PROTEINDOMAINID
+fullDomainList <- fullDomainList[is.na(fullDomainList) == FALSE]
+duplicatedID <- which(duplicated(fullDomainList)==TRUE)
+CommonDomain <- fullDomainList[duplicatedID]
+
+masterRegDomain[which(masterRegDomain$PROTEINDOMAINID == CommonDomain),]
+
+### find common domain within each cluster
+
+for(clusC in 1:length(MCLclust)){
+  
+  MCLmem = rownames(adjM)[which(MCLcluster$Cluster==MCLclust[clusC])]
+  
+  masterRegEntrezSym = ColTable[which(ColTable[,1] %in% MCLmem),4]
+  
+  masterRegDomain <- select(edb, keys = masterRegEntrezSym, keytype = "GENENAME",
+                            columns = c("PROTEINDOMAINID","PROTEINDOMAINSOURCE",""))
+  
+  fullDomainList <- masterRegDomain$PROTEINDOMAINID
+  fullDomainList <- fullDomainList[is.na(fullDomainList) == FALSE]
+  
+  if (any(duplicated(fullDomainList)==TRUE)){
+    commonDomain[[clusC]] <- fullDomainList(duplicated(fullDomainList))
+  }else{commonDomain[[clusC]] = 0}
+  
+}
 
 
-g <- dcRDataLoader('onto.GOMF')
-Anno <- dcRDataLoader('SCOP.sf2GOMF')
-dag <- dcDAGannotate(g, annotations=Anno, path.mode="shortest_paths",verbose=TRUE)
-alldomains <- unique(unlist(nInfo(dag)$annotations))
-domains <- sample(alldomains,10)
-dnetwork <- dcDAGdomainSim(g=dag, domains=domains,
-                           method.domain="BM.average", method.term="Resnik", parallel=FALSE,
-                           verbose=TRUE)
-dnetwork
-data <- data.frame(aSeeds=c(1,0,1,0,1), bSeeds=c(0,0,1,0,1))
-rownames(data) <- id(dnetwork)[1:5]
-coutput <- dcRWRpipeline(data=data, g=dnetwork, parallel=FALSE)
-coutput
+
