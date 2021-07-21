@@ -1,3 +1,5 @@
+### too many duplicated codes, simplify as soon as possible
+
 Tranche1plate <-as.matrix(MySoma1[,1],ncol=1)
 rownames(Tranche1plate) <- rownames(MySoma1)
 Tranche2plate <-as.matrix(MySoma2[,1],ncol=1)
@@ -28,6 +30,7 @@ for (i in 1:nrow(MySoma2)){
 
 PlateBatch <- c(PlateBatch1,PlateBatch2)
 MetaRaw = cbind(batchV,PlateBatch)
+MySomaDatAll <- rbind(MySoma1[,25:5308],MySoma2[,26:5309])
 rownames(MetaRaw)=rownames(MySomaDatAll)
 
 ### Normalize and Combat plate on tranche 1 
@@ -116,7 +119,6 @@ pairs(plot3$x[,1:3],col=PlateBatch1)
 title("Plate effect of Tranche1 Normalising+PlateCombat")
 pairs(plot4$x[,1:3],col=PlateBatch1)
 title("Plate effect of Tranche1 Raw+PlateCombat")
-
 
 
 ### Tranche2 Raw  
@@ -212,5 +214,57 @@ EndoLabel <- NbClust(data = pcDat ,distance = "euclidean", min.nc = 2, max.nc = 
 
 ### try log for combat
 express22 <- log(MySoma2[,26:ncol(MySoma2)])
-combat_plate_tranche22 <- sva::ComBat(t(express2), PlateBatch2, mod=NULL, par.prior = TRUE, prior.plots = FALSE)
+combat_plate_tranche22 <- sva::ComBat(t(express22), PlateBatch2, mod=NULL, par.prior = TRUE, prior.plots = FALSE)
 TrancheEffect22 = KNNtest(t(combat_plate_tranche22),PlateBatchT2) 
+
+MySomaAllLog <- rbind(log(MySoma1[,25:5308]),t(combat_plate_tranche22))
+combat_log_logComBatTranche2 <- sva::ComBat(t(MySomaAllLog), batchV, mod=NULL, par.prior = TRUE, prior.plots = FALSE)
+combat_log_logComBatTranche2_PC <- prcomp(as.matrix(t(combat_log_logComBatTranche2)),scale = TRUE)
+temp5 <- combat_log_logComBatTranche2_PC$x[,1:3]
+pairs(temp5,col=batchV)
+title("Tranche 2 plate combat + Tranche effect after log combat on tranche only")
+pairs(temp5,col=PlateBatch)
+title("Tranche 2 plate combat + Plate effect after combat on tranche only")
+TrancheEffect3 = KNNtest(t(combat_log_logComBatTranche2),MetaRaw) 
+
+combat_log_logComBatTranche22 <- sva::ComBat(t(MySomaAllLog), PlateBatch, mod=NULL, par.prior = FALSE, prior.plots = FALSE)
+combat_log_logComBatTranche22_PC <- prcomp(as.matrix(t(combat_log_logComBatTranche22)),scale = TRUE)
+temp6 <- combat_log_logComBatTranche22_PC$x[,1:3]
+pairs(temp6,col=batchV)
+title("Tranche 2 plate combat + Tranche effect after log combat on plate only")
+pairs(temp6,col=PlateBatch)
+title("Tranche 2 plate combat + Plate effect after combat on Plate only")
+TrancheEffect33 = KNNtest(t(combat_log_logComBatTranche22),MetaRaw) 
+
+start_time1 <- Sys.time()
+combat_log_logComBatTranche2 <- sva::ComBat(t(MySomaAllLog), batchV, mod=NULL, par.prior = FALSE, prior.plots = FALSE)
+TrancheEffect44 = KNNtest(t(combat_log_logComBatTranche2),MetaRaw) 
+
+end_time1 <- Sys.time()
+start_time2 <- Sys.time()
+combat_log_logComBatTranche22 <- sva::ComBat(t(MySomaAllLog), PlateBatch, mod=NULL, par.prior = FALSE, prior.plots = FALSE)
+TrancheEffect44 = KNNtest(t(combat_log_logComBatTranche22),MetaRaw) 
+end_time2 <- Sys.time()
+
+Sys.time()
+combat_all_batch <- sva::ComBat(t(MySomaDatAll), batchV, mod=NULL, par.prior = FALSE, prior.plots = FALSE)
+combat_all_batch_PC <- prcomp(as.matrix(t(combat_all_batch)),scale = TRUE)
+TrancheEffectcombat_all_batch = KNNtest(t(combat_all_batch),MetaRaw) 
+
+Sys.time()
+combat_all_batch_log <- sva::ComBat(t(log(MySomaDatAll)), batchV, mod=NULL, par.prior = FALSE, prior.plots = FALSE)
+combat_all_batch_log_PC <- prcomp(as.matrix(t(combat_all_batch_log)),scale = TRUE)
+TrancheEffectcombat_all_batch_log = KNNtest(t(combat_all_batch_log),MetaRaw) 
+
+
+Sys.time()
+combat_all_plate <- sva::ComBat(t(MySomaDatAll), batchV, mod=NULL, par.prior = FALSE, prior.plots = FALSE)
+combat_all_plate_PC <- prcomp(as.matrix(t(combat_all_plate)),scale = TRUE)
+TrancheEffectcombat_all_plate = KNNtest(t(combat_all_plate),MetaRaw) 
+
+Sys.time()
+combat_all_plate_log <- sva::ComBat(t(log(MySomaDatAll)), PlateBatch, mod=NULL, par.prior = FALSE, prior.plots = FALSE)
+combat_all_plate_PC <- prcomp(as.matrix(t(combat_all_plate_log)),scale = TRUE)
+TrancheEffectcombat_all_plate_log = KNNtest(t(combat_all_plate_log),MetaRaw) 
+
+Sys.time()
