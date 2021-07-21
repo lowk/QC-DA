@@ -237,14 +237,15 @@ title("Tranche 2 plate combat + Plate effect after combat on Plate only")
 TrancheEffect33 = KNNtest(t(combat_log_logComBatTranche22),MetaRaw) 
 
 start_time1 <- Sys.time()
-combat_log_logComBatTranche2 <- sva::ComBat(t(MySomaAllLog), batchV, mod=NULL, par.prior = FALSE, prior.plots = FALSE)
+combat_log_logComBatTranche2 <- sva::ComBat(t(MySomaAllLog), batchV, mod=NULL, par.prior = FALSE, prior.plots = FALSE) ###8 min
 TrancheEffect44 = KNNtest(t(combat_log_logComBatTranche2),MetaRaw) 
 
 end_time1 <- Sys.time()
 start_time2 <- Sys.time()
-combat_log_logComBatTranche22 <- sva::ComBat(t(MySomaAllLog), PlateBatch, mod=NULL, par.prior = FALSE, prior.plots = FALSE)
+combat_log_logComBatTranche22 <- sva::ComBat(t(MySomaAllLog), PlateBatch, mod=NULL, par.prior = FALSE, prior.plots = FALSE) ###40min
+
 TrancheEffect44 = KNNtest(t(combat_log_logComBatTranche22),MetaRaw) 
-end_time2 <- Sys.time()
+end_time2 <- Sys.time() 
 
 Sys.time()
 combat_all_batch <- sva::ComBat(t(MySomaDatAll), batchV, mod=NULL, par.prior = FALSE, prior.plots = FALSE)
@@ -258,7 +259,7 @@ TrancheEffectcombat_all_batch_log = KNNtest(t(combat_all_batch_log),MetaRaw)
 
 
 Sys.time()
-combat_all_plate <- sva::ComBat(t(MySomaDatAll), batchV, mod=NULL, par.prior = FALSE, prior.plots = FALSE)
+combat_all_plate <- sva::ComBat(t(MySomaDatAll), PlateBatch, mod=NULL, par.prior = FALSE, prior.plots = FALSE)
 combat_all_plate_PC <- prcomp(as.matrix(t(combat_all_plate)),scale = TRUE)
 TrancheEffectcombat_all_plate = KNNtest(t(combat_all_plate),MetaRaw) 
 
