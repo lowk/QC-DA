@@ -193,7 +193,7 @@ title("Plate effect")
 TrancheEffect = KNNtest(t(combat_all_batch),MetaRaw) 
 
 
-###Include only the human samples and huma proteins, perform the same analysis from main body
+###Include only the human samples and huma proteins, rerun functions to call, and perform the same analysis from main body
 MySoma1Done <- filterHM(MySoma1)
 MySoma2Done <- filterHM(MySoma2)
-MySomaAll <- rbind(MySoma1Done[,25:ncol(MySoma1Done)],MySoma1Done[,26:ncol(MySoma2Done)])
+MySomaAll <- rbind(MySoma1Done[,25:ncol(MySoma1Done)],MySoma2Done[,26:ncol(MySoma2Done)])
