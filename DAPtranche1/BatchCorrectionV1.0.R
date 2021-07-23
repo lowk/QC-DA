@@ -193,12 +193,12 @@ title("Plate effect")
 TrancheEffect = KNNtest(t(combat_all_batch),MetaRaw) 
 
 
-###Include only the human samples and huma proteins, and perform the same analysis from main body
+###Include only the human samples and huma proteins, and perform the same analysis from main body line 132
 MySoma1Done <- filterHM(MySoma1)
 MySoma2Done <- filterHM(MySoma2)
 MySomaAll <- rbind(MySoma1Done[,25:ncol(MySoma1Done)],MySoma2Done[,26:ncol(MySoma2Done)])
 tranche <- c(rep(1,nrow(MySoma1Done)),rep(2,nrow(MySoma2Done)))
-MySomaPlate <- as.matrix(c(MySoma1Done[,"PlateId"],MySoma1Done[,"PlateId"]),ncol=1)
+MySomaPlate <- as.matrix(c(MySoma1Done[,"PlateId"],MySoma2Done[,"PlateId"]),ncol=1)
 PlateBatch <- GetPlateBatch(MySomaPlate)
 MetaRaw = cbind(tranche,PlateBatch)
 rownames(MetaRaw)=rownames(MySomaAll)
