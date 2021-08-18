@@ -16,8 +16,10 @@ library(e1071)
 library(Rtsne)
 library(Hmisc)
 library(moments)
+library(diptest)
 source("QCnormTranche2.R")
 source("QCassessTranche2.R")
+source("BatchCorrectionV1.0.R")
 
 
 ### change 5 input parameters here: Funlist (select from "HYBNORM,PLATESCALE,MIDNORM/MIDNORMcali/MIDNORMsamp,CALIBRATION". The order is the aimed normalisation procedure)
@@ -96,9 +98,11 @@ MySomaAll <- rbind(MySoma1Done[,c(1:13,25:ncol(MySoma1Done))],MySoma2Done[,c(1:1
 exprDat_normStore <- combat_all
 exprDat_normMr <- data.frame(cbind(BioMetaM,MySomaAll[,c(1:13)],exprDat_normStore)) 
 
-### disease group filter:
-clinicType="Injury"
-clinic = "INJ"
+### OA;disease group filter:
+clinicType="OA"
+clinic = "OA"
+# clinicType="Injury"
+# clinic = "INJ"
 BioMeta = BioMetaM[which(BioMetaM$diseaseGroup==clinicType),]
 exprDat_normM <- exprDat_normMr[which(exprDat_normMr$diseaseGroup==clinicType),]
 calib_normM <- exprDat_normMr[grep(paste(clinic,"POOL"),exprDat_normMr$SampleId),]
@@ -233,8 +237,10 @@ close(conTxt)
 
 ### summary of remover:
 ### protein removed: 
-Remove1 = which(R2_norm2<0.4)  ### OA/injury repeats
+Remove1 = which(R2_norm1<0.4)  ### OA/injury repeats
+Remove2 = which(R2_norm2<0.4)
 length(Remove1)
+length(Remove2)
 
 ### VarExp for Freeze/Thraw Pool
 tempFT <- apply(calib_norm[calibIDs %in% paste0("OA POOL-HT-",c(6,25),"/29"),],2,var)/apply(exprDat_norm,2,var)
@@ -245,17 +251,18 @@ length(Remove3)
 ### about R2 explained: !(A | B) = !A & !B
 remove1.3 = intersect(Remove1,Remove3)
 length(remove1.3)
+
 Remove4 = which(ConfounderTable2[[2]][,"SampleAge"]<(0.05/5004))  ### Anova sample age p
 length(Remove4)
 Remove5 = which(ConfounderTable2[[2]][,"Plate"]<(0.05/5004))  ### Anova sample age p
 length(Remove5)
 Remove6 = which(ConfounderTable2[[2]][,"tranche"]<(0.05/5004))  ### Anova sample age p
 length(Remove6)
+ProteinRatio = apply(CompM,2,function(x){length(which(x<0))/nrow(CompM)})
 
 removeTotalPro = which(ProteinRatio>0.25)
 length(removeTotalPro)
-# removeTotalSamp = which(SampRatio>0.25)
-# length(SampRatio)
+
 removeNameP = colnames(exprDat_norm)[removeTotalPro]
 removeName = removeNameP[!grepl("HybControlElution|Non|Spuriomer",removeNameP)]
 removeIDprotein = unique(c(Remove1,Remove4,Remove5,Remove6,removeTotalPro))
@@ -271,7 +278,7 @@ TotalProteinOut <- which(totalProtein_norm>(mean(totalProtein_norm) +5*sd(totalP
 length(TotalProteinOut)
 removeIDsample = unique(c(PCAout,TotalProteinOut))
 length(removeIDsample)
-removedSampName = metadata$`STEpUP Sample Identification Number (SIN)`[removeIDsample]
+removedSampName = MySomaAll[rownames(exprDat_norm)[removeIDsample],]$SampleId
 
 filterOADat = exprDat_norm[-removeIDsample,-removeIDprotein]
 filterOAMatrix = cbind(exprDat_normM[-removeIDsample,1:23],filterOADat)
@@ -317,10 +324,9 @@ close(conTxtT)
 
 write.csv(MySoma,"NormalisedSomaScanData.csv")
 
-length(which(SampRatio>0.25))
 apply(ConfounderTable2[[2]],2,function(x){length(which(x<1e-5))})
 
-library(diptest)
+### multimodel dip test
 dipP=vector()
 for (dipcounter in 1:ncol(exprDat_norm)){
  dipP[dipcounter] = dip(exprDat_norm[,dipcounter], full.result = FALSE, min.is.0 = FALSE, debug = FALSE)
