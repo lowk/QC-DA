@@ -707,8 +707,6 @@ ExtractSandwich = function(inputfile4){
 }
 
 
-#RawAll <- rbind(RawM1[,c(1:13,25:ncol(RawM1))],RawM2[,c(1:13,26:ncol(RawM2))])
-RawM = MySomaRaw[,!grepl("HybControlElution|Non",colnames(RawAll))]
 ###unqualified RFUs below LoD
 LoDdetection <- function(RawM,Exp){
   
