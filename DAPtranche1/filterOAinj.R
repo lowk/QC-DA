@@ -1,11 +1,4 @@
 ### script to filter unquialified proteins and samples before downstream analysis.
-clr  = function()
-{
-  rm(list = ls(envir = .GlobalEnv),
-     envir = .GlobalEnv)
-}
-clr()
-
 library(diptest)
 source("QCnormTranche2.R")
 source("QCassessTranche2.R")
@@ -58,10 +51,10 @@ exprDat_normStore <- combat_all
 exprDat_normMr <- data.frame(cbind(BioMetaM,MySomaAll[,c(1:13)],exprDat_normStore)) ### exprDat_normMr: combined data set with meta clinical information
 
 ### OA;disease group filter: set the "clinicType and clinic"
-# clinicType="OA"
-# clinic = "OA"
-clinicType="Injury"
-clinic = "INJ"
+clinicType="OA"
+clinic = "OA"
+# clinicType="Injury"
+# clinic = "INJ"
 BioMeta = BioMetaM[which(BioMetaM$diseaseGroup==clinicType),]
 exprDat_normM <- exprDat_normMr[which(exprDat_normMr$diseaseGroup==clinicType),]
 calib_normM <- exprDat_normMr[grep(paste(clinic,"POOL"),exprDat_normMr$SampleId),]
@@ -84,8 +77,7 @@ R2_norm1 = VarExp(calib_normM, calib_norm,"OA",exprDat_norm)
 R2_norm2 = VarExp(calib_normM, calib_norm,"INJ",exprDat_norm)
 
 ###Check 3: PCA. 
-listPCA = PCAglob(BioMeta,exprDat_norm)
-pc_norm = listPCA[[1]] 
+pc_norm <- prcomp(as.matrix(exprDat_norm),scale = TRUE)
 
 ###Check 4: Techical confounders
 ConfounderTable2 = ConfouderCheck(totalProtein_norm,exprDat_norm,BioMeta) ### confounders against each proteins 
@@ -95,7 +87,7 @@ apply(ConfounderTable2[[2]],2,function(x){(length(which(x<0.05/5004)))/5004})
 ###Check 5: multimodel dip test
 dipP=vector()
 for (dipcounter in 1:ncol(exprDat_norm)){
-  dipP[dipcounter] = dip(exprDat_norm[,dipcounter], full.result = FALSE, min.is.0 = FALSE, debug = FALSE)
+  dipP[dipcounter] = dip.test(exprDat_norm[,dipcounter], simulate.p.value = FALSE, B = 2000)$p.value
 }
 length(which(dipP<1e-5))
 
@@ -123,14 +115,17 @@ length(Remove5)
 Remove6 = which(ConfounderTable2[[2]][,"tranche"]<1e-5)  ### Anova sample age p
 length(Remove6)
 
+remove7 = which(dipP<1e-5)
+length(remove7)
+
 ProteinRatio = apply(CompM,2,function(x){length(which(x<0))/nrow(CompM)})
 removeTotalPro = which(ProteinRatio>0.25)
 length(removeTotalPro)
 
 removeNameP = colnames(exprDat_norm)[removeTotalPro]
 removeName = removeNameP[!grepl("HybControlElution|Non|Spuriomer",removeNameP)]
-removeIDprotein = unique(c(remove1.3,Remove4,Remove5,Remove6,removeTotalPro))
-removeIDprotein = unique(c(Remove2,Remove4,Remove5,Remove6,removeTotalPro))
+removeIDprotein = unique(c(remove1.3,Remove4,Remove5,Remove6,remove7,removeTotalPro))
+removeIDprotein = unique(c(Remove2,Remove4,Remove5,Remove6,remove7,removeTotalPro))
 length(removeIDprotein)
 removeProteinName = colnames(exprDat_norm)[removeIDprotein]
 
