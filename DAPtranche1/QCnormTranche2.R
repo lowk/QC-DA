@@ -553,13 +553,15 @@ CompTWO <- function(SomaM,MySoma){
 }
 
 ### divide RawM into two disease groups, analyse individually.clinicType:"OA"/"Injury"
-ExtractClinicG = function(RawM,inputfile3){
-  metadata <- read_excel(inputfile3,range="A2:O618",col_names=TRUE)
+ExtractClinicG = function(RawM,inputfile,trancheT){
+  if(trancheT==1){metadata <- read_excel(inputfile,range="A2:Q438",col_names=TRUE)
+  }else{metadata <- read_excel(inputfile,range="A2:O618",col_names=TRUE)}
+  
   CohortInfor = metadata$`Cohort name`
   GroupInfor = metadata$Group
   bloodStainInfor = metadata$`Grading of SF bloodstaining prior to centrifugation  (if known)`
   bloodStainInfor[bloodStainInfor=="-"]<-NA
-
+  
   ###sampleAge of tranche2 excel, we need to format: Data->text to column + general   
   ###01 JAN 2021 = 44197 as our uptodate
   sampleAgeInfor <- 44197 - metadata$`Date of biological sampling`
@@ -567,7 +569,7 @@ ExtractClinicG = function(RawM,inputfile3){
   patientGenderInfor = metadata$`Patient gender`
   patientAgeInfor = metadata$`Patient age at Baseline SF sample`
   
-  selPatientID = matrix(NA,ncol=1,nrow=nrow(metadata))
+  stepupIDTRaw = matrix(NA,ncol=1,nrow=nrow(metadata))
   CohortTRawM = matrix(NA,ncol=1,nrow=nrow(RawM))
   colnames(CohortTRawM) = "Corhort"
   GroupTRawM = matrix(NA,ncol=1,nrow=nrow(RawM))
@@ -581,33 +583,51 @@ ExtractClinicG = function(RawM,inputfile3){
   patientAgeTRaw = matrix(NA,ncol=1,nrow=nrow(RawM))
   colnames(patientAgeTRaw) = "patientAge"
   
-  STEPupName <- gsub("V1-F","F-V1",metadata$`STEpUP Sample Identification Number (SIN)`)
+  ### correct the SIN mistakes between clinic excel file and soma file
+  clinicSIN <- metadata$`STEpUP Sample Identification Number (SIN)`
+  ss = matrix(NA,ncol=1,nrow=length(clinicSIN))
+  for (i in 1:length(ss)){
+    hyphC <- length(which(grepl("-",strsplit(clinicSIN[i],"")[[1]])))
+    sss <- strsplit(clinicSIN[i],"-")
+    correct = vector(length =hyphC+1)
+    for(j in 1:(hyphC+1)){
+      if(j==2){correct[2] = sss[[1]][3]
+      }else if(j==3){correct[3]=sss[[1]][2]
+      }else{correct[j]=sss[[1]][j]}
+    }
+    ss[i] <- paste(correct,collapse="-")
+  }
+  STEPupName <- ss
   
-  RawM$SampleId[which(RawM$SampleId == "STEP1409F-V1-HT1")] = "STEP1409-F-V1-HT1"
+  #special for tranche1 data:  
+  STEPupName[STEPupName == "STEP1409-F-V1-HT1"] <- "STEP1409F-V1-HT1"
   
-  for (spCounter in 1:length(selPatientID)){
-    selPatientID = which(RawM$SampleId == STEPupName[spCounter])
-    CohortTRawM[selPatientID] = CohortInfor[spCounter]
-    GroupTRawM[selPatientID]=GroupInfor[spCounter]
-    bloodStainTRawM[selPatientID] = bloodStainInfor[spCounter]
-    sampleAgeTRaw[selPatientID] = sampleAgeInfor[spCounter]
-    patientGenderTRaw[selPatientID] = patientGenderInfor[spCounter]
-    patientAgeTRaw[selPatientID] = patientAgeInfor[spCounter]
+  
+  
+  for (spCounter in 1:nrow(metadata)){
+    selPatient = which(RawM$SampleId == STEPupName[spCounter])
+    CohortTRawM[selPatient] = CohortInfor[spCounter]
+    GroupTRawM[selPatient]=GroupInfor[spCounter]
+    bloodStainTRawM[selPatient] = bloodStainInfor[spCounter]
+    sampleAgeTRaw[selPatient] = sampleAgeInfor[spCounter]
+    patientGenderTRaw[selPatient] = patientGenderInfor[spCounter]
+    patientAgeTRaw[selPatient] = patientAgeInfor[spCounter]
+    stepupIDTRaw[selPatient] = STEPupName[spCounter]
   } ###RawM row order didn't change, just added more information from STEpUP_QCData_Tranche1.xlsx
   
-  DatStartId <- which(colnames(RawM)=="RMA")+1
-  DiseaseType <- levels(as.factor(GroupTRawM))
-  for (Dcounter in 1:length(DiseaseType)){
-    RawM$SampleType[which(GroupTRawM==DiseaseType[Dcounter])]=paste(DiseaseType[Dcounter],"Sample",sep="")
-    
-  }
-
-  ### up to now integrate disease group type into RawM, RawM$SampleType including Pool type, disease sample type
- 
-  RawMList = list(mode="vector",length=2)
-  RawMList[[1]] = RawM
-  RawMList[[2]] = cbind(RawM$PlateId,GroupTRawM,CohortTRawM,bloodStainTRawM,sampleAgeTRaw,patientGenderTRaw,patientAgeTRaw)
-  rownames(RawMList[[2]]) <- rownames(RawM)
+  # DatStartId <- which(colnames(RawM)=="CRYBB2.10000.28")
+  # DiseaseType <- levels(as.factor(GroupTRawM))
+  # for (Dcounter in 1:length(DiseaseType)){
+  #   RawM$SampleType[which(GroupTRawM==DiseaseType[Dcounter])]=paste(DiseaseType[Dcounter],"Sample",sep="")
+  #   
+  # }
   
-  return(RawMList) 
+  ### up to now integrate disease group type into RawM, RawM$SampleType including Pool type, disease sample type
+  stepupIDTRaw[stepupIDTRaw == "STEP1409F-V1-HT1"] <- "STEP1409-F-V1-HT1"
+  
+  BioMeta = cbind(RawM$PlateId,stepupIDTRaw,GroupTRawM,CohortTRawM,bloodStainTRawM,sampleAgeTRaw,patientGenderTRaw,patientAgeTRaw)
+  colnames(BioMeta)[1:2] = c("PlateID","STEpUPID")
+  rownames(BioMeta) = rownames(RawM)
+  
+  return(BioMeta) 
 }

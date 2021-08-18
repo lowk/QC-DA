@@ -41,6 +41,8 @@ myFilePath <- "/Users/ydeng/Documents/QCstepOA/"  ### set required file director
 inputfile1 <- paste(myFilePath,"SS-205086.adat",sep="")
 inputfile2 <- paste(myFilePath,"SS-205086.hybNormRef.medNormInt.medNormRefSMP.adat",sep="")
 inputfile3 <- paste(myFilePath,"/clinic/STEpUP_QCData_Tranche2_09Mar2021.xlsx",sep="")
+inputfile4 <- paste(myFilePath,"/clinic/STEpUP_QCData_Tranche1.xlsx",sep="")
+
 initiaList<- initQCnorm(inputfile1,inputfile2) ###raw RFUs from Adat, ajust SampleType according to tranch Excel
 RawM2 <- initiaList[[1]]
 ColTable <- initiaList[[2]] ### ColTable for the convenience of further enrichment and network analysis
@@ -55,11 +57,9 @@ MySoma2 = UserNorm(Funlist,RawM2)
 
 #part2######################################################################################################
 ### initialise information from excel files
-RawMList <- ExtractClinicG(RawM2,inputfile3)
-RawM2 <- RawMList[[1]]
-BioMeta2 <- RawMList[[2]]
-
-
+BioMeta1 <- data.frame(ExtractClinicG(RawM1,inputfile4,1))
+BioMeta2 <- data.frame(ExtractClinicG(RawM2,inputfile3,2))
+ 
 
 ###MySomaAll: combined tranches samples with plate id ect. MySomaRaw:combined tranches with calibrator and buffer; exprDat_norm: = combined tranches sample hunman protein expression data 
 ### exprDat_normM:combat human samples with plateid ect.
@@ -73,31 +73,38 @@ for (kk in 1:nrow(MySoma2)){
 BioMeta2 <- BioMeta2[idADJ,]
 BioMeta2[,"patientGender"] <- sub("Male","M",BioMeta2[,"patientGender"])
 BioMeta2[,"patientGender"] <- sub("Female","F",BioMeta2[,"patientGender"])
+### "BatchCorrection.RData": restored BioMeta, which has completed the above order match and gender symbol replacement.
+### check rownames and colnames:
+# all(rownames(BioMeta1)==rownames(MySoma1))
+# all(rownames(BioMeta2)==rownames(MySoma2))
+# all(colnames(MySoma1) == colnames(RawM1))
+# all(colnames(MySoma2) == colnames(RawM2))
+save(RawM1,RawM2,MySoma1,MySoma2,combat_all,BioMeta1,BioMeta2,file="sourceData.RData")
 ###Include only the human samples and huma proteins, and perform the same analysis from main body line 132
+
 MySoma1Done <- filterHM(MySoma1,BioMeta1)[[1]]
 MySoma2Done <- filterHM(MySoma2,BioMeta2)[[1]]
-BioMeta1Done <- filterHM(MySoma1,BioMeta1)[[2]]
-BioMeta2Done <- filterHM(MySoma2,BioMeta2)[[2]]
-
-MySomaAllDat <- rbind(MySoma1Done[,25:ncol(MySoma1Done)],MySoma2Done[,26:ncol(MySoma2Done)])
+BioMeta1Done <- data.frame(filterHM(MySoma1,BioMeta1)[[2]])
+BioMeta2Done <- data.frame(filterHM(MySoma2,BioMeta2)[[2]])
 tranche <- c(rep(1,nrow(MySoma1Done)),rep(2,nrow(MySoma2Done)))
 MySomaPlate <- as.matrix(c(MySoma1Done[,"PlateId"],MySoma2Done[,"PlateId"]),ncol=1)
 PlateBatch <- GetPlateBatch(MySomaPlate)
-MetaRaw = cbind(tranche,PlateBatch)
-rownames(MetaRaw)=rownames(MySomaAll)
-colnames(MetaRaw) = c("Tranche Batch","Plate Batch")
-PlateBatch <- as.vector(PlateBatch) ### Combat argument requirement
+BioMetaM <- data.frame(cbind((rbind(BioMeta1Done,BioMeta2Done)),tranche,PlateBatch))
 
 MySomaRaw <- rbind(MySoma1[,c(1:13,25:ncol(MySoma1))],MySoma2[,c(1:13,26:ncol(MySoma2))])
 MySomaAll <- rbind(MySoma1Done[,c(1:13,25:ncol(MySoma1Done))],MySoma2Done[,c(1:13,26:ncol(MySoma2Done))])
-exprDat_norm <- t(combat_all_batch6)
-exprDat_normM <- cbind(MySomaAll[,c(1:13)],exprDat_norm) 
-calib_normM <- data.frame(exprDat_normM[grep("POOL",exprDat_normM$SampleId),])
-calib_norm <- as.matrix(calib_normM[,-c(1:(which(colnames(calib_normM)=="CRYBB2.10000.28")-1))])
-calibIDs <-  calib_normM$SampleId[grep("POOL",calib_normM$SampleId)]  ###calibID corresponding to calib_norm
-calibPlates <-  calib_normM$PlateId[grep("POOL",calib_normM$SampleId)]
+exprDat_normStore <- combat_all
+exprDat_normMr <- data.frame(cbind(BioMetaM,MySomaAll[,c(1:13)],exprDat_normStore)) 
 
-BioMeta <- data.frame(rbind(BioMeta1Done,BioMeta2Done))
+### disease group filter:
+clinicType="Injury"
+clinic = "INJ"
+BioMeta = BioMetaM[which(BioMetaM$diseaseGroup==clinicType),]
+exprDat_normM <- exprDat_normMr[which(exprDat_normMr$diseaseGroup==clinicType),]
+calib_normM <- exprDat_normMr[grep(paste(clinic,"POOL"),exprDat_normMr$SampleId),]
+calib_norm <- as.matrix(calib_normM[,-c(1:(which(colnames(calib_normM)=="CRYBB2.10000.28")-1))])
+calibPlates <-  calib_normM$PlateId
+exprDat_norm <- exprDat_normM[,-c(1:(which(colnames(exprDat_normM)=="CRYBB2.10000.28")-1))]
 
 ### adjust BioMeta row order matching exprDat_norm. RawM2 row order different from MySoma2, due to ###Tranche2: levels(as.factor): plate order is this: "P0028435" "P0028436" "P0028443" "P0028444" "P0028445" "P0028446" "P0028453"
 ###But in the adat file, plate order is: "P0028435" "P0028436" "P0028443" "P0028444" "P0028453" "P0028445" "P0028446"
@@ -117,7 +124,7 @@ BioMeta <- data.frame(rbind(BioMeta1Done,BioMeta2Done))
 
 ##1: Total protein check. Limit of detection.
 totalProtein_norm = TotalProCheck(exprDat_norm,BioMeta)
-CompM = LoDdetection(MySomaRaw) ###CompM > 0, RFU above limit of Detection
+CompM = LoDdetection(MySomaRaw,exprDat_norm) ###CompM > 0, RFU above limit of Detection
 # writeLines(paste("total RFUs below limit of Detection is ", length(which(CompM<0))," percentage of total RFUs ",length(which(CompM<0))/(nrow(CompM)*ncol(CompM)),"\n"),conTxt)
 paste("total RFUs below limit of Detection is ", length(which(CompM<0))," percentage of total RFUs ",length(which(CompM<0))/(nrow(CompM)*ncol(CompM)),"\n")
 
@@ -126,8 +133,8 @@ CalibratorCheck(calib_norm,"OA")
 CalibratorCheck(calib_norm,"INJ")
 
 # pool variance explained
-R2_norm1 = VarExp(calib_norm,"OA")
-R2_norm2 = VarExp(calib_norm,"INJ")
+R2_norm1 = VarExp(calib_normM, calib_norm,"OA",exprDat_norm)
+R2_norm2 = VarExp(calib_normM, calib_norm,"INJ",exprDat_norm)
 
 ##CV breakdowns:
 printListDone1 = CVbreak(calib_norm,"OA")
@@ -138,7 +145,7 @@ writeLines("CVbreakdown for INJ group:",conTxt)
 write.table(printListDone2,conTxt,row.names = FALSE,col.names=FALSE)
 
 ###Check 3: PCA. 
-listPCA = PCAglob(MetaRawM,exprDat_norm)
+listPCA = PCAglob(BioMeta,exprDat_norm)
 pc_norm = listPCA[[1]] ###pc_norm: coordinates in first 10 principles 
 listPCA[[2]] ###plot: PCs against corresponding eigen values 
 listPCA[[3]] ###plot: variance explained by PCs
@@ -226,39 +233,58 @@ close(conTxt)
 
 ### summary of remover:
 ### protein removed: 
-Remove1 = which(R2_norm1<0.1)  ### OA repeats
+Remove1 = which(R2_norm2<0.4)  ### OA/injury repeats
 length(Remove1)
-Remove2 = which(R2_norm2<0.1)  ### INJ repeats
-length(Remove2)
+
 ### VarExp for Freeze/Thraw Pool
 tempFT <- apply(calib_norm[calibIDs %in% paste0("OA POOL-HT-",c(6,25),"/29"),],2,var)/apply(exprDat_norm,2,var)
 tempFT[tempFT > 1] <- 1
 R2_normFT <- (1 - tempFT)^2
-Remove3 = which(R2_normFT<0.1) ### Freeze/Thaw repeats
+Remove3 = which(R2_normFT<0.4) ### Freeze/Thaw repeats
 length(Remove3)
+### about R2 explained: !(A | B) = !A & !B
+remove1.3 = intersect(Remove1,Remove3)
+length(remove1.3)
 Remove4 = which(ConfounderTable2[[2]][,"SampleAge"]<(0.05/5004))  ### Anova sample age p
 length(Remove4)
+Remove5 = which(ConfounderTable2[[2]][,"Plate"]<(0.05/5004))  ### Anova sample age p
+length(Remove5)
+Remove6 = which(ConfounderTable2[[2]][,"tranche"]<(0.05/5004))  ### Anova sample age p
+length(Remove6)
+
 removeTotalPro = which(ProteinRatio>0.25)
 length(removeTotalPro)
-removeTotalSamp = which(SampRatio>0.25)
-length(SampRatio)
-removeNameP = colnames(DatSamp)[removeTotalPro]
+# removeTotalSamp = which(SampRatio>0.25)
+# length(SampRatio)
+removeNameP = colnames(exprDat_norm)[removeTotalPro]
 removeName = removeNameP[!grepl("HybControlElution|Non|Spuriomer",removeNameP)]
-removeIDprotein = unique(c(Remove1,Remove2,Remove3,Remove4,removeTotalPro))
+removeIDprotein = unique(c(Remove1,Remove4,Remove5,Remove6,removeTotalPro))
 length(removeIDprotein)
 removeProteinName = colnames(exprDat_norm)[removeIDprotein]
 
 ###sample removed:
-mismatchID50 ### gender mismatch
-length(mismatchID50)
+# mismatchID50 ### gender mismatch
+# length(mismatchID50)
 PCAout <- which(distanceToCenter>(mean(distanceToCenter) + 5*sd(distanceToCenter)))
 length(PCAout)
 TotalProteinOut <- which(totalProtein_norm>(mean(totalProtein_norm) +5*sd(totalProtein_norm)))
 length(TotalProteinOut)
-removeIDsample = unique(c(PCAout,mismatchID50,TotalProteinOut))
+removeIDsample = unique(c(PCAout,TotalProteinOut))
 length(removeIDsample)
-removedSampName = metadata_reord$`STEpUP Sample Identification Number (SIN)`[removeIDsample]
+removedSampName = metadata$`STEpUP Sample Identification Number (SIN)`[removeIDsample]
 
+filterOADat = exprDat_norm[-removeIDsample,-removeIDprotein]
+filterOAMatrix = cbind(exprDat_normM[-removeIDsample,1:23],filterOADat)
+filterOA = list("filterOADat"=filterOADat,"filterOAMatrix"=filterOAMatrix)
+# saveRDS(filterOA,"filterOA.rds")
+
+filterINJDat = exprDat_norm[-removeIDsample,-removeIDprotein]
+filterINJMatrix = cbind(exprDat_normM[-removeIDsample,1:23],filterINJDat)
+filterINJ = list("filterINJDat"=filterINJDat,"filterINJMatrix"=filterINJMatrix)
+# saveRDS(filterINJ,"filterINJ.rds")
+
+sourceData = list("RawM1"=RawM1,"RawM2"=RawM2,"MySoma1"=MySoma1,"MySoma2"=MySoma2,"combat_all"=combat_all,"BioMeta1"=BioMeta1,"BioMeta2"=BioMeta2)
+# saveRDS(sourceData,"sourceData.rds")
 
 conTxtT = file("removeList2.csv","append")
 writeLines("Summary of Removed Sample Identification Number(SIN)",conTxtT)

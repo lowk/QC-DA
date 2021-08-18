@@ -2,15 +2,14 @@
 
 TotalProCheck <- function(exprDat_norm,BioMeta){
   totalProtein_norm <- apply(exprDat_norm,1,sum)
-  par(mfrow=c(1,3))
   hist(totalProtein_norm,breaks=100,xlab="Total Protein",main="Total Protein Distribution",cex.main=2,cex.lab=1.5,cex.axis=1.5)
   plot(as.numeric(BioMeta$bloodStain),totalProtein_norm,xlab="Blood Staining Grade",ylab="Total Protein",cex.lab=1.5,cex.axis=1.5)
   abline(lm(totalProtein_norm ~ as.numeric(BioMeta$bloodStain)),col="red",lwd=2)
   text(1,max(totalProtein_norm)*0.95,paste("p =",formatC(cor.test(totalProtein_norm, as.numeric(BioMeta$bloodStain))$p.val,format="e",digits=3)),pos=4,col="red",cex=2)
   text(1,max(totalProtein_norm)*0.9,paste("cor =",formatC(cor.test(totalProtein_norm, as.numeric(BioMeta$bloodStain))$estimate,format="e",digits=3)),pos=4,col="red",cex=2)
-  boxplot(totalProtein_norm ~ BioMeta$diseaseGroup,main=paste("p =",
-                                                              signif(kruskal.test(log(totalProtein_norm) ~ BioMeta$diseaseGroup)$p.val,digits=4)),
-                                                              xlab="Disease Group",ylab="Total Protein Within Group",cex.main=2,cex.lab=1.5,cex.axis=1.5)
+  # boxplot(totalProtein_norm ~ BioMeta$diseaseGroup,main=paste("p =",
+  #                                                             signif(wilcox.test(log(totalProtein_norm) ~ BioMeta$diseaseGroup)$p.val,digits=4)),
+  #                                                             xlab="Disease Group",ylab="Total Protein Within Group",cex.main=2,cex.lab=1.5,cex.axis=1.5)
   return(totalProtein_norm)
 }
 # which(totalProtein_norm<500000000)
@@ -20,8 +19,9 @@ TotalProCheck <- function(exprDat_norm,BioMeta){
 ##2: Checks against calibrators. Input selected RFUs calib_norm, and clinicalType ("OA" or "INJ")
 # pool %CV
 CalibratorCheck <- function(calib_norm,clinicType){
+  calibIDs <-  calib_normM$SampleId  ###calibID corresponding to calib_norm
   temp1 <- apply(calib_norm[grep(clinicType,calibIDs),],2,sd)/apply(calib_norm[grep(clinicType,calibIDs),],2,mean)
-  plot(100*quantile(temp1,seq(0,1,length.out=100)),seq(0,1,length.out=100),type="l",xlim=c(0,40),xlab=paste("%CV",clinicType),ylab="Cumulative total",cex.lab=1.5,main="Repeatiblity of OA sample replicates")
+  plot(100*quantile(temp1,seq(0,1,length.out=100)),seq(0,1,length.out=100),type="l",xlim=c(0,100),xlab=paste("%CV",clinicType),ylab="Cumulative total",cex.lab=1.5,main="Repeatiblity of Injury sample replicates")
   abline(h=0.8,lty=2)
   abline(v=100*quantile(temp1,0.8),lty=2)
   text(100*quantile(temp1,0.8)-4,0.2,signif(quantile(temp1,0.8),4),pos=4,col="red",cex=1.5)
@@ -37,7 +37,8 @@ CalibratorCheck <- function(calib_norm,clinicType){
 }
 
 # pool variance explained
-VarExp <- function(calib_norm,clinicType){
+VarExp <- function(calib_normM,calib_norm,clinicType,exprDat_norm){
+  calibIDs <- calib_normM$SampleId
   temp <- apply(calib_norm[grep(clinicType,calibIDs),],2,var)/apply(exprDat_norm,2,var)
   temp[temp > 1] <- 1
   R2_norm <- (1 - temp)^2
@@ -235,15 +236,20 @@ PCAglob <- function(BioMeta,exprDat_norm){
 ConfouderCheck <- function(totalProtein_norm,normANOV,BioMeta){
   TPA1 = anova(lm(totalProtein_norm ~ as.factor(BioMeta$PlateID)))$Pr[1]
   TPA2 = anova(lm(totalProtein_norm ~ as.factor(BioMeta$Corhort)))$Pr[1]
-  TPA3 = anova(lm(totalProtein_norm ~ as.factor(BioMeta$diseaseGroup)))$Pr[1]
+  # TPA3 = anova(lm(totalProtein_norm ~ as.factor(BioMeta$diseaseGroup)))$Pr[1]
   TPA4 = anova(lm(totalProtein_norm ~ as.factor(BioMeta$bloodStain)))$Pr[1]
   TPA5 = anova(lm(totalProtein_norm ~ BioMeta$sampleAge))$Pr[1]
   TPA6 = anova(lm(totalProtein_norm ~ BioMeta$tranche))$Pr[1]
-  TPA = matrix(c(TPA1,TPA2,TPA3,TPA4,TPA5,TPA6),nrow=1)
-  colnames(TPA) = c("Plate","Cohort","Group","Bloodstain","SampleAge","tranche")
+  # TPA = matrix(c(TPA1,TPA2,TPA3,TPA4,TPA5,TPA6),nrow=1)
+  # colnames(TPA) = c("Plate","Cohort","Group","Bloodstain","SampleAge","tranche")
   
-  ps_norm <- data.frame(matrix(NA,nrow=ncol(normANOV),ncol=6))
-  names(ps_norm) <- c("Plate","Cohort","Group","Bloodstain","SampleAge","tranche")
+  TPA = matrix(c(TPA1,TPA2,TPA4,TPA5,TPA6),nrow=1)
+  colnames(TPA) = c("Plate","Cohort","Bloodstain","SampleAge","tranche")
+  
+  ps_norm <- data.frame(matrix(NA,nrow=ncol(normANOV),ncol=length(TPA)))
+  # names(ps_norm) <- c("Plate","Cohort","Group","Bloodstain","SampleAge","tranche")
+  names(ps_norm) <- c("Plate","Cohort","Bloodstain","SampleAge","tranche")
+  
   varExp_norm<- ps_norm
   
   for (i in 1:ncol(normANOV)){
@@ -255,9 +261,9 @@ ConfouderCheck <- function(totalProtein_norm,normANOV,BioMeta){
     ps_norm$Cohort[i] <- tempMd$Pr[1]
     varExp_norm$Cohort[i] <- tempMd$Sum[1]/sum(tempMd$Sum)
     
-    tempMd <-  anova(lm(normANOV[,i] ~ as.factor(BioMeta$diseaseGroup)))
-    ps_norm$Group[i] <- tempMd$Pr[1]
-    varExp_norm$Group[i] <- tempMd$Sum[1]/sum(tempMd$Sum)
+    # tempMd <-  anova(lm(normANOV[,i] ~ as.factor(BioMeta$diseaseGroup)))
+    # ps_norm$Group[i] <- tempMd$Pr[1]
+    # varExp_norm$Group[i] <- tempMd$Sum[1]/sum(tempMd$Sum)
     
     tempMd <-  anova(lm(normANOV[,i] ~ as.factor(BioMeta$bloodStain)))
     ps_norm$Bloodstain[i] <- tempMd$Pr[1]
@@ -299,8 +305,9 @@ confounderPlot2 = function(ConfounderTableX,onWhat){
   
   for (TLcounter in 2:2){
     toPlot = ConfounderTableX[[TLcounter]]
-    confounder = c("Plate","Cohort","Group","Bloodstain","SampleAge","Tranche")
-    titleType = c(titleAdd,"ExplainedVariance")
+    # confounder = c("Plate","Cohort","Group","Bloodstain","SampleAge","Tranche")
+    confounder = c("Plate","Cohort","Bloodstain","SampleAge","Tranche")
+    # titleType = c(titleAdd,"ExplainedVariance")
     
     # for (ccounter in 1:length(confounder)){
     #   temp <- p.adjust(toPlot[,ccounter],method="bonferroni")
@@ -703,10 +710,8 @@ ExtractSandwich = function(inputfile4){
 #RawAll <- rbind(RawM1[,c(1:13,25:ncol(RawM1))],RawM2[,c(1:13,26:ncol(RawM2))])
 RawM = MySomaRaw[,!grepl("HybControlElution|Non",colnames(RawAll))]
 ###unqualified RFUs below LoD
-LoDdetection <- function(RawM){
+LoDdetection <- function(RawM,Exp){
   
-  ###abstract plateId
-  PlateIdUni = levels(factor(RawM$PlateId))
   
   DatStartId <- which(colnames(RawM)=="CRYBB2.10000.28")  ###for calculation convenience, extract data zone only
   
@@ -714,14 +719,11 @@ LoDdetection <- function(RawM){
   MBuffer = RawM[which(RawM$SampleType == "Buffer"),]
   datBuffer = MBuffer[,DatStartId:ncol(MBuffer)]
   BuffMedian = apply(datBuffer,2,median)
-  LoD = BuffMedian + 4.9* t(apply(apply(datBuffer,1,function(x){abs(x - BuffMedian)}),1,median))
-  rownames(LoD) = "LoD"
+  LoD = as.matrix(BuffMedian + 4.9* t(apply(apply(datBuffer,1,function(x){abs(x - BuffMedian)}),1,median)))
+  LoD = LoD[!grepl("HybControlElution|Non",colnames(LoD))]
   
-  MSample = RawM[grep("Sample",RawM$SampleType),]
-  DatSamp = MSample[,DatStartId:ncol(MSample)]
-  
-  ### which RFU is below LoD? CompM
-  CompM = t(apply(DatSamp,1,function(x){x-LoD}))
+  ### which RFU is below LoD? CompM. for combatted Exp, LoD need have log transform
+  CompM = t(apply(Exp,1,function(x){x-log(LoD)}))
   
   ### histgram of proportion below LoD per protein
   ProteinRatio = apply(CompM,2,function(x){length(which(x<0))/nrow(CompM)})
