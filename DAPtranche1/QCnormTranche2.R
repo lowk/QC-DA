@@ -1,4 +1,3 @@
-###07 OCT, somewhere changed compared to github record(which is correct one to generate released data), need further check.
 ### RFUs Normalisation, across all the plates
 
 getMySoma <- function(Platelist){
