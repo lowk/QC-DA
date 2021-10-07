@@ -1,3 +1,4 @@
+###07 OCT, somewhere changed compared to github record(which is correct one to generate released data), need further check.
 ### RFUs Normalisation, across all the plates
 
 getMySoma <- function(Platelist){
@@ -18,9 +19,9 @@ HYBNORM <- function(RawM){
   
   Platelist = list()
   
-  DatStartId <- which(colnames(RawM)=="RMA")+1  ###for calculation convenience, extract data zone only
+  DatStartId <- which(colnames(RawM)=="CRYBB2.10000.28") ###for calculation convenience, extract data zone only. Only tranche 2 has "RMA" column
   
-  HybId = which(Type == "Hybridization Control Elution")
+  HybId = which(grepl("HybControlElution",colnames(RawM))) -(DatStartId-1)
   
   for (plateCounter in 1:length(PlateIdUni)){
     
@@ -58,7 +59,7 @@ PLATESCALE <- function(RawM){
   
   Platelist = list()
   
-  DatStartId <- which(colnames(RawM)=="RMA")+1  ###for calculation convenience, extract data zone only
+  DatStartId <- which(colnames(RawM)=="CRYBB2.10000.28")  ###for calculation convenience, extract data zone only
   
   for (plateCounter in 1:length(PlateIdUni)){
     
@@ -99,7 +100,7 @@ CALIBRATION <- function(RawM){
   
   Platelist = list()
   
-  DatStartId <- which(colnames(RawM)=="RMA")+1  ###for calculation convenience, extract data zone only
+  DatStartId <- which(colnames(RawM)=="CRYBB2.10000.28")  ###for calculation convenience, extract data zone only
   
   for (plateCounter in 1:length(PlateIdUni)){
     
@@ -229,8 +230,8 @@ MIDNORM = function(RawM){ ###caliCase control which sample type to be applied Mi
     idHyb = which(grepl("HybControlElution",colnames(RawMS))==TRUE)
     idNonHyb = which(!grepl("HybControlElution",colnames(RawMS))==TRUE)
     RawMS1 = RawMS[,idNonHyb] ###RawM1 to track "Ratio of Normalization Median to Sample Value"
-    DatStartId = which(colnames(RawMS1) == "RMA") +1
-    DatStartIdP = which(colnames(RawMS) == "RMA") +1
+    DatStartId <- which(colnames(RawMS1)=="CRYBB2.10000.28")
+    DatStartIdP <- which(colnames(RawMS)=="CRYBB2.10000.28")
     
     sampType = levels(factor(RawMS$SampleType))
     
@@ -309,8 +310,8 @@ MIDNORMcali = function(RawM){ ###caliCase control which sample type to be applie
     idHyb = which(grepl("HybControlElution",colnames(RawMS))==TRUE)
     idNonHyb = which(!grepl("HybControlElution",colnames(RawMS))==TRUE)
     RawMS1 = RawMS[,idNonHyb] ###RawM1 to track "Ratio of Normalization Median to Sample Value"
-    DatStartId = which(colnames(RawMS1) == "RMA") +1
-    DatStartIdP = which(colnames(RawMS) == "RMA") +1
+    DatStartId = which(colnames(RawMS1) == "CRYBB2.10000.28")
+    DatStartIdP = which(colnames(RawMS) == "CRYBB2.10000.28")
     
     sampType = "Calibrator"
     
@@ -390,8 +391,8 @@ MIDNORMsamp = function(RawM){
     idHyb = which(grepl("HybControlElution",colnames(RawMS))==TRUE)
     idNonHyb = which(!grepl("HybControlElution",colnames(RawMS))==TRUE)
     RawMS1 = RawMS[,idNonHyb] ###RawM1 to track "Ratio of Normalization Median to Sample Value"
-    DatStartId = which(colnames(RawMS1) == "RMA") +1
-    DatStartIdP = which(colnames(RawMS) == "RMA") +1
+    DatStartId = which(colnames(RawMS1) == "CRYBB2.10000.28")
+    DatStartIdP = which(colnames(RawMS) == "CRYBB2.10000.28")
     
     sampType = c("Buffer","Sample")
     
@@ -475,16 +476,20 @@ initQCnorm <- function(inputfile1,inputfile2){
     
     slineL = strsplit(sline,'\t')[[1]]
     
-    if(length(slineL) > 29){
-      if(slineL[31]=="TargetFullName"){ TargetFullName <<- slineL[32:length(slineL)]}
-      if(slineL[31]=="Target"){ Target <<- slineL[32:length(slineL)]}
-      if(slineL[31]=="UniProt"){ UniProt <<- slineL[32:length(slineL)]}
-      if(slineL[31]=="EntrezGeneID"){ EntrezGeneID <<- slineL[32:length(slineL)]}
-      if(slineL[31]=="EntrezGeneSymbol"){ EntrezGeneSymbol <<- slineL[32:length(slineL)]}
-      if(slineL[31]=="Type"){Type <<- slineL[32:length(slineL)]}
-      if(slineL[31]=="Dilution"){Dilution <<- slineL[32:length(slineL)]}
-      if(slineL[31]=="medNormRefSMP_ReferenceRFU"){
-        PlateScale_Reference <<- as.numeric(slineL[32:length(slineL)])  
+    if(length(slineL) > 28){
+      getStartTerm = which(slineL!="")[1]
+      getStartId = getStartTerm+1
+      
+      if(slineL[getStartTerm]=="TargetFullName"){ TargetFullName <<- slineL[getStartId:length(slineL)]}
+      if(slineL[getStartTerm]=="Target"){ Target <<- slineL[getStartId:length(slineL)]}
+      if(slineL[getStartTerm]=="UniProt"){ UniProt <<- slineL[getStartId:length(slineL)]}
+      if(slineL[getStartTerm]=="EntrezGeneID"){ EntrezGeneID <<- slineL[getStartId:length(slineL)]}
+      if(slineL[getStartTerm]=="EntrezGeneSymbol"){ EntrezGeneSymbol <<- slineL[getStartId:length(slineL)]}
+      if(slineL[getStartTerm]=="Type"){Type <<- slineL[getStartId:length(slineL)]}
+      if(slineL[getStartTerm]=="Dilution"){Dilution <<- slineL[getStartId:length(slineL)]}
+      if(slineL[getStartTerm]=="medNormRefSMP_ReferenceRFU"){
+        PlateScale_Reference <<- as.numeric(slineL[getStartId:length(slineL)])  
+        # load("PlateScale_Reference.Rdata")
         break} ### tranche2 data, Platesclae_Reference is labelled "medNormRefSMP_ReferenceRFU"
       
       ### 30 is the beginning field of the ^COL_DATA;column names of meta data = SeqId +Target
@@ -493,7 +498,8 @@ initQCnorm <- function(inputfile1,inputfile2){
   close(con1)
   
   ### pay attention, tranche2 RawM protein data begin from the 26th col
-  ColTable <- cbind(as.matrix(colnames(RawM)[26:ncol(RawM)]),as.matrix(UniProt),as.matrix(EntrezGeneID),as.matrix(EntrezGeneSymbol),as.matrix(TargetFullName),as.matrix(Target))
+  DatStartId = which(colnames(RawM) == "CRYBB2.10000.28")
+  ColTable <- cbind(as.matrix(colnames(RawM)[DatStartId:ncol(RawM)]),as.matrix(UniProt),as.matrix(EntrezGeneID),as.matrix(EntrezGeneSymbol),as.matrix(TargetFullName),as.matrix(Target))
   colnames(ColTable) <- list("Protein Name", "UniPro ID", 'EntrezGeneID',"EntrezGeneSymbol","TargetFullName","Target")
   
   EntrezID = vector(mode="integer",length=nrow(ColTable)) ### ColTable: change multiple geneIDs to the first 1
@@ -522,8 +528,8 @@ UserNorm <- function(Funlist,RawM){
 ### compare correlation coefficiency among two RFUs
 CompTWO <- function(SomaM,MySoma){
   
-  DatStartId1 <- which(colnames(SomaM)=="NormScale_0_5")+1
-  DatStartId2 <- which(colnames(MySoma)=="RMA")+1
+  DatStartId1 <- which(colnames(SomaM)=="CRYBB2.10000.28")
+  DatStartId2 <- which(colnames(MySoma)=="CRYBB2.10000.28")
   
   rowOrderName = rownames(SomaM)
   rowOrder = vector(mode="numeric",length=nrow(SomaM))
@@ -601,7 +607,6 @@ ExtractClinicG = function(RawM,inputfile,trancheT){
   
   #special for tranche1 data:  
   STEPupName[STEPupName == "STEP1409-F-V1-HT1"] <- "STEP1409F-V1-HT1"
-  
   
   
   for (spCounter in 1:nrow(metadata)){
