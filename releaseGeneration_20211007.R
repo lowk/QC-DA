@@ -15,28 +15,29 @@ library(sva)
 Funlist = list(HYBNORM,MIDNORMcali,PLATESCALE,CALIBRATION)
 
 ############ Normalise two tranches data seperately; extract col table information from adat file#############################
-myFilePath <- "/Users/ydeng/Documents/QCstepOA/"  ### set required file directory
-
 inputfile11 <- paste(myFilePath,"SS-200008.ADat",sep="")
 inputfile12 <- paste(myFilePath,"SS-200008.hybNorm.medNormInt.plateScale.medNormRefSMP.ADat",sep="")
+inputfile13 <- paste(myFilePath,"SS-200008.hybNorm.medNormInt.plateScale.ADat",sep="")
 inputfile21 <- paste(myFilePath,"SS-205086.adat",sep="")
 inputfile22 <- paste(myFilePath,"SS-205086.hybNormRef.medNormInt.medNormRefSMP.adat",sep="")
+inputfile23 <- paste(myFilePath,"SS-205086.hybNormRef.medNormInt.adat",sep="")
 inputfile3 <- paste(myFilePath,"/clinic/STEpUP_QCData_Tranche1.xlsx",sep="")
 inputfile4 <- paste(myFilePath,"/clinic/STEpUP_QCData_Tranche2_09Mar2021.xlsx",sep="")
 
-initiaList1<- initQCnorm(inputfile11,inputfile12) ###abstract raw RFUs and  col table from Adat file
-RawM1 <- initiaList1[[1]]
-ColTable1 <- initiaList1[[2]] ### ColTable for the convenience of further enrichment and network analysis
+RawM1 <- read.adat(inputfile11)
+ColTable1 <- attr(read.adat(inputfile12),"Col.Meta") ### ColTable for the convenience of further enrichment and network analysis
 MySoma1 = UserNorm(Funlist,RawM1) ## user select which normlisation methods.
 
-initiaList2<- initQCnorm(inputfile21,inputfile12) 
-RawM2 <- initiaList2[[1]]
-ColTable2 <- initiaList2[[2]] 
+RawM2 <- read.adat(inputfile21)
+ColTable2 <- attr(read.adat(inputfile22),"Col.Meta")
 MySoma2 = UserNorm(Funlist,RawM2)
 
-### check code accuracy by comparing our normalised data VS somalogic provided data
-checkMyCode(RawM1,inputfile12)
-checkMyCode(RawM2,inputfile22) ### only 9 HybControlElution has correlation coefficient < 0.7
+### check code accuracy by comparing our normalized data VS somalogic provided data
+Flist = list(HYBNORM,MIDNORMcali)
+checkMyCode(RawM2,inputfile23,Flist)
+Flist = list(HYBNORM,MIDNORMcali,PLATESCALE,MIDNORMsamp)
+checkMyCode(RawM1,inputfile12,Flist)
+checkMyCode(RawM2,inputfile22,Flist) ### only 9 HybControlElution has correlation coefficient < 0.7
 
 ############ initialise information from excel files ############################
 BioMeta1 <- data.frame(ExtractClinicG(RawM1,inputfile3,1))
@@ -58,7 +59,7 @@ all(colnames(MySoma1) == colnames(RawM1))
 all(colnames(MySoma2) == colnames(RawM2))
 
 
-############ combat correction for plate batch effect and tramcje batch effect #############################
+############ combat correction for plate batch effect and tranche batch effect #############################
 ###Include only the human samples and human proteins
 MySoma1Done <- filterHM(MySoma1,BioMeta1)[[1]]
 MySoma2Done <- filterHM(MySoma2,BioMeta2)[[1]]
