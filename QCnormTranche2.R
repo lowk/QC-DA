@@ -19,6 +19,19 @@ GetPlateBatch <- function(MySomaPlate){
   return(PlateBatch)
 }
 
+
+
+### user define Funlist: any combination of normalisation in a interested order
+UserNorm <- function(Funlist,RawM){
+  for (FunCounter in 1:length(Funlist)){
+    f <- Funlist[[FunCounter]]
+    MySoma = f(RawM)
+    RawM = MySoma
+  }
+  return(MySoma)
+}
+
+
 ### check my code accuracy by comparing our normalisation and somalogic provided normalised data
 checkMyCode <- function(RawM,SomaFile,Flist){
   SomaM <- read.adat(SomaFile)
@@ -160,7 +173,7 @@ CALIBRATION <- function(RawM){
 }
 
 
-MIDNORM = function(RawM){ ###caliCase control which sample type to be applied MidNorm
+MIDNORM = function(RawM,sampType){ ###sampType should be a vector subset of c("Calibrator","Buffer","Sample")
   
   PlateIdUni = levels(factor(RawM$PlateId))
   
@@ -178,11 +191,9 @@ MIDNORM = function(RawM){ ###caliCase control which sample type to be applied Mi
     DatStartId <- which(colnames(RawMS1)=="CRYBB2.10000.28")
     DatStartIdP <- which(colnames(RawMS)=="CRYBB2.10000.28")
     
-    sampType = levels(factor(RawMS$SampleType))
-    
     for (sampTypeCounter in 1:length(sampType)){
       
-      idSamp = which(RawMS1$SampleType == sampType[[sampTypeCounter]])
+      idSamp = which(RawMS1$SampleType == sampType[sampTypeCounter])
       
       datZoneP = RawMS1[,DatStartId:ncol(RawMS1)] ### datazone excludes "HybControlElution"
       
@@ -403,17 +414,6 @@ MIDNORMsamp = function(RawM){
 }
 
 
-### user define Funlist: any combination of normalisation in a interested order
-UserNorm <- function(Funlist,RawM){
-  for (FunCounter in 1:length(Funlist)){
-    f <- Funlist[[FunCounter]]
-    MySoma = f(RawM)
-    RawM = MySoma
-  }
-  return(MySoma)
-}
-
-
 ### compare correlation coefficiency among two RFUs
 CompTWO <- function(SomaM,MySoma){
   
@@ -459,8 +459,9 @@ ExtractClinicG = function(RawM,inputfile,trancheT){
   
   ###sampleAge of tranche2 excel, we need to format: Data->text to column + general   
   ###01 JAN 2021 = 44197 as our up to date
-  sampleAgeInfor <- 44197 - metadata$`Date of biological sampling`
-  
+  if(trancheT==1){sampleAgeInfor <- 2021 - metadata$`Date of biological sampling`
+  }else{sampleAgeInfor <- floor((44197 - metadata$`Date of biological sampling`)/365)}
+    
   patientGenderInfor = metadata$`Patient gender`
   patientAgeInfor = metadata$`Patient age at Baseline SF sample`
   
