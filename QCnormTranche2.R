@@ -20,13 +20,12 @@ GetPlateBatch <- function(MySomaPlate){
 }
 
 ### check my code accuracy by comparing our normalisation and somalogic provided normalised data
-checkMyCode <- function(RawM,SomaFile){
+checkMyCode <- function(RawM,SomaFile,Flist){
   SomaM <- read.adat(SomaFile)
-  FunList = list(HYBNORM,MIDNORMcali,PLATESCALE,MIDNORMsamp)
-  MySoma = UserNorm(FunList,RawM)
+  MySoma = UserNorm(Flist,RawM)
   corShip = CompTWO(SomaM,MySoma) 
-  # DatStartId <- which(colnames(MySoma)=="CRYBB2.10000.28")
-  # colnames(MySoma[DatStartId:ncol(MySoma)])[which(corShip<0.7)] ### different analyses
+  DatStartId <- which(colnames(MySoma)=="CRYBB2.10000.28")
+  colnames(MySoma[DatStartId:ncol(MySoma)])[which(corShip<0.7)] ### different analyses
 }
 
 
@@ -401,60 +400,6 @@ MIDNORMsamp = function(RawM){
   
   MySoma = MySomaTemp[rowOrder,colOrder]
   return(MySoma)
-}
-
-
-### initialise required metadata for normalisation methods
-initQCnorm <- function(inputfile1,inputfile2){
-  
-  RawM <- read.adat(inputfile1)
-  ### read in Col^MetaTable
-  
-  con1 = file(inputfile2, "r")
-  
-  while(TRUE) {
-    sline = readLines(con1, n=1)
-    
-    if(length(sline) == 0){
-      print("Meta data not intact")
-      break}
-    
-    slineL = strsplit(sline,'\t')[[1]]
-    
-    if(length(slineL) > 28){
-      getStartTerm = which(slineL!="")[1]
-      getStartId = getStartTerm+1
-      
-      if(slineL[getStartTerm]=="TargetFullName"){ TargetFullName <<- slineL[getStartId:length(slineL)]}
-      if(slineL[getStartTerm]=="Target"){ Target <<- slineL[getStartId:length(slineL)]}
-      if(slineL[getStartTerm]=="UniProt"){ UniProt <<- slineL[getStartId:length(slineL)]}
-      if(slineL[getStartTerm]=="EntrezGeneID"){ EntrezGeneID <<- slineL[getStartId:length(slineL)]}
-      if(slineL[getStartTerm]=="EntrezGeneSymbol"){ EntrezGeneSymbol <<- slineL[getStartId:length(slineL)]}
-      if(slineL[getStartTerm]=="Type"){Type <<- slineL[getStartId:length(slineL)]}
-      if(slineL[getStartTerm]=="Dilution"){Dilution <<- slineL[getStartId:length(slineL)]}
-      # if(slineL[getStartTerm]=="medNormRefSMP_ReferenceRFU"){
-      #   medNormRefSMP <<- as.numeric(slineL[getStartId:length(slineL)])
-      if(slineL[getStartTerm]=="PlateScale_Reference"){
-        PlateScale_Reference <<- as.numeric(slineL[getStartId:length(slineL)])
-        
-        break} 
-    }
-  }
-  close(con1)
-  
-  DatStartId = which(colnames(RawM) == "CRYBB2.10000.28")
-  ColTable <- cbind(as.matrix(colnames(RawM)[DatStartId:ncol(RawM)]),as.matrix(UniProt),as.matrix(EntrezGeneID),as.matrix(EntrezGeneSymbol),as.matrix(TargetFullName),as.matrix(Target))
-  colnames(ColTable) <- list("Protein Name", "UniPro ID", 'EntrezGeneID',"EntrezGeneSymbol","TargetFullName","Target")
-  
-  EntrezID = vector(mode="integer",length=nrow(ColTable)) ### ColTable: change multiple geneIDs to the first 1
-  for (EntrezID in 1:nrow(ColTable)){
-    IDsymlist = strsplit(ColTable[,"EntrezGeneSymbol"][EntrezID]," ")
-    IDlist = strsplit(ColTable[,"EntrezGeneID"][EntrezID]," ")
-    if(length(IDsymlist[[1]])>1){ColTable[,"EntrezGeneSymbol"][EntrezID]=IDsymlist[[1]][1]
-    ColTable[,"EntrezGeneID"][EntrezID]=IDlist[[1]][1]}
-  } 
-  
-  return(list(RawM,ColTable))
 }
 
 
