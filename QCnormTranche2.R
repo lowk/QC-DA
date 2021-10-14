@@ -798,7 +798,7 @@ CVbreak <- function(RFU1,RFU2,clinicType,exprDat,titleMessage){
 
 
 ### toTest1,toTest2 are biomarker lists from sandwich file and adat file individually
-ExtVal <- function(exprDatM){
+ExtVal <- function(exprDatM,clinicType){
   metadata_xls <- read_excel("STEpUP_QCData_Tranche1.xlsx")
   temp1 <- data.frame(as.matrix(metadata_xls)[-1,1:17])
   names(temp1) <- as.matrix(metadata_xls)[1,1:17]
@@ -811,20 +811,24 @@ ExtVal <- function(exprDatM){
   exprDat_norm <- exprDatM[grep("STEP",exprDatM$SampleId),which(colnames(exprDatM)=="CRYBB2.10000.28"):ncol(exprDatM)]
   #reorder meta-data
   metadata_reord <- metadata[stepupID,]
-
-  sandwich_master_xls_2 <- read_excel("Masterlist.xlsx",sheet=2)
+  
+  if(clinicType=="OA"){sandwich_master_xls_2 <- read_excel("Masterlist.xlsx",sheet=2)
   #process Ben data, averaging across replicates
   temp1 <- data.frame(sandwich_master_xls_2)
   temp2 <- (temp1[temp1$replicate == 1,-c(1:2)] + temp1[temp1$replicate == 2,-c(1:2)])/2
-  sandwich_master <- data.frame(PIN=temp1[temp1$replicate == 1,1],temp2)
+  sandwich_master <- data.frame(PIN=temp1[temp1$replicate == 1,1],temp2)}
+  #process Historic data
+  else{sandwich_master_xls_2 <- read_excel("Masterlist.xlsx",sheet=3)
+  sandwich_master <- data.frame(sandwich_master_xls_2)}
+  
   rownames(sandwich_master) <- sandwich_master$PIN
-
+  
   toTest1 <- c("mcp1bl","il6bl","il8bl","mmp3bl","activinabl","tsg6bl","timp1bl","tgfb1bl","fgf2bl")
   toTest2 <- c("CCL2.2578.67","IL6.4673.13","CXCL8.3447.64","MMP3.2788.55","INHBA.13738.8","TNFAIP6.5036.50","TIMP1.2211.9","TGFB1.2333.72","FGF2.3025.50")
-
+  
   CorData_norm = data.frame(matrix(NA,nrow=length(toTest1),ncol=5))
   names(CorData_norm) <- c("SandwichName","SomaName","cor","Pvalue","N")
-
+  
   for (compCounter in 1:length(toTest1)){
     CorData_norm[compCounter,] <- getpars(sandwich_master,exprDat_norm,toTest1[compCounter],toTest2[compCounter])
   }
@@ -833,11 +837,11 @@ ExtVal <- function(exprDatM){
 
 getpars <- function(sandwich_master,exprDat_norm,par1,par2) {
   temp1 <- sandwich_master[as.character(metadata_reord$`STEpUP Participant Identification Number (PIN)`),]
-
+  
   if (sum(!(is.na(temp1[,par1] + exprDat_norm[,par2]))) == 0) return(c(par1,par2,NA,NA,0))
   md <- cor.test(temp1[,par1],exprDat_norm[,par2])
   c(par1,par2,unlist(md[c("estimate","p.value")]),2+md$parameter)
-
+  
 }
 
 getpars2 <- function(temp1,par1,par2,keep) {

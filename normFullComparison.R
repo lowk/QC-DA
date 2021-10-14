@@ -4,6 +4,7 @@ library(SomaDataIO)
 source("QCnormTranche2.R")
 library(sva)
 library(umap)
+library(GGally)
 
 myFilePath <- "/Users/ydeng/Documents/QCstepOA/normComp/"  ### set required file directory
 inputfile1 <- paste(myFilePath,"SS-200008.ADat",sep="") ### RawM1
@@ -239,3 +240,13 @@ normList = list("RawM1"=RawM1,"RawM2"=RawM2,"CombinedRaw"=CombinedRaw,
                 "MySoma1Full"=MySoma1Full,"MySoma2Full"=MySoma2Full,"MyFullOnly"=MyFullOnly,"combat_MySomaFull"=combat_MySomaFull,
                 "Soma1"=Soma1,"Soma2"=Soma2,"SomaOnly"=SomaOnly,"combat_Soma"=combat_Soma)
 saveRDS(normList,file="normList.rds")
+
+batchMeta = list()batchMeta_Raw
+
+batchMeta_HybOnly
+
+batchMeta_MySomaHyb
+
+batchMeta_SomaOnly
+
+batchMeta_Soma
