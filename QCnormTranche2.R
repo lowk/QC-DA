@@ -797,23 +797,6 @@ CVbreak <- function(RFU1,RFU2,clinicType,exprDat,titleMessage){
 }
 
 
-ExtractSandwich = function(inputfile){
-  sandwich_master_xls_1 <- read_excel(inputfile,sheet=1)
-  sandwich_master_xls_2 <- read_excel(inputfile,sheet=2)
-  sandwich_master_xls_3 <- read_excel(inputfile,sheet=3)
-  sandwich_master_xls_4 <- read_excel(inputfile,sheet=4,range = "A1:D31", col_names = TRUE)
-  
-  #process Ben data, averaging across replicates
-  temp1 <- data.frame(sandwich_master_xls_2)
-  temp2 <- (temp1[temp1$replicate == 1,-c(1:2)] + temp1[temp1$replicate == 2,-c(1:2)])/2
-  sandwich_master_Ben <- data.frame(PIN=temp1[temp1$replicate == 1,1],temp2)
-  rownames(sandwich_master_Ben) <- sandwich_master_Ben$PIN
-  
-  return(sandwich_master_Ben)
-}
-
-
-
 ### toTest1,toTest2 are biomarker lists from sandwich file and adat file individually
 ExtVal <- function(exprDatM){
   metadata_xls <- read_excel("STEpUP_QCData_Tranche1.xlsx")
