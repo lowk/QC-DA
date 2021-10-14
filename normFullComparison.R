@@ -5,6 +5,7 @@ source("QCnormTranche2.R")
 library(sva)
 library(umap)
 library(GGally)
+library(factoextra)
 
 myFilePath <- "/Users/ydeng/Documents/QCstepOA/normComp/"  ### set required file directory
 inputfile1 <- paste(myFilePath,"SS-200008.ADat",sep="") ### RawM1
@@ -77,8 +78,10 @@ PlotUmap(CombinedRaw,batchMeta_Raw,2,"UMAP on combined raw data")
 
 CVbreak(RawM1,RawM2,"OA",CombinedRaw,"combined raw data")
 CVbreak(RawM1,RawM2,"INJ",CombinedRaw,"combined raw data")
+
 print("RawM1 accuracy against external controls")
-ExtVal(RawM1)
+exOA1 <- ExtVal(RawM1,"OA")
+exINJ1 <- ExtVal(RawM1,"INJ")
 
 # Hybnorm only
 TestHyb <- MyCombat(MySoma1Hyb,MySoma2Hyb,1) ### without combat
@@ -95,7 +98,8 @@ CVbreak(MySoma1Hyb,MySoma2Hyb,"OA",CombinedHyb,"combined hyb only data")
 CVbreak(MySoma1Hyb,MySoma2Hyb,"INJ",CombinedHyb,"combined hyb only data")
 
 print("MySoma1Hyb accuracy against external controls")
-ExtVal(MySoma1Hyb)
+exOA2 <-ExtVal(MySoma1Hyb,"OA")
+exINJ2 <- ExtVal(MySoma1Hyb,"INJ")
 
 
 # Hybnorm only + ComBat
@@ -114,7 +118,8 @@ CVbreak(MySoma1Hyb,MySoma2Hyb,"INJ",combat_MySomaHyb,"combat_MySomaHyb")
 
 print("combat_MySomaHyb accuracy against external controls")
 cutMySoma1Hyb = MySoma1Hyb[which(grepl("Sample",MySoma1Hyb[,"SampleType"])),1:(which(colnames(MySoma1Hyb)=="CRYBB2.10000.28")-1)]
-ExtVal(cbind(cutMySoma1Hyb,combat_MySomaHyb[1:nrow(cutMySoma1Hyb),]))
+exOA3 <- ExtVal(cbind(cutMySoma1Hyb,combat_MySomaHyb[1:nrow(cutMySoma1Hyb),]),"OA")
+exINJ3 <- ExtVal(cbind(cutMySoma1Hyb,combat_MySomaHyb[1:nrow(cutMySoma1Hyb),]),"INJ")
 
 # “Full norm”, i.e. using tranche 1 calibrators for both tranches
 TestMyFullOnly <- MyCombat(MySoma1Full,MySoma2Full,1)
@@ -131,7 +136,8 @@ CVbreak(MySoma1Full,MySoma2Full,"OA",log(MyFullOnly),"combined my full norm")
 CVbreak(MySoma1Full,MySoma2Full,"INJ",log(MyFullOnly),"combined my full norm")
 
 print("MySoma1Full accuracy against external controls")
-ExtVal(MySoma1Full)
+exOA4 <- ExtVal(MySoma1Full,"OA")
+exINJ4 <- ExtVal(MySoma1Full,"INJ")
 
 # Full norm + ComBat
 TestMyFull <- MyCombat(MySoma1Full,MySoma2Full,0)
@@ -149,7 +155,8 @@ CVbreak(MySoma1Full,MySoma2Full,"INJ",combat_MySomaFull,"combat_MySomaFul")
 
 print("combat_MySomaFul accuracy against external controls")
 cutMySoma1Full = MySoma1Full[which(grepl("Sample",MySoma1Full[,"SampleType"])),1:(which(colnames(MySoma1Full)=="CRYBB2.10000.28")-1)]
-ExtVal(cbind(cutMySoma1Full,combat_MySomaFull[1:nrow(cutMySoma1Hyb),]))
+exOA5 <- ExtVal(cbind(cutMySoma1Full,combat_MySomaFull[1:nrow(cutMySoma1Hyb),]),"OA")
+exINJ5 <- ExtVal(cbind(cutMySoma1Full,combat_MySomaFull[1:nrow(cutMySoma1Hyb),]),"INJ")
 
 
 # Darryl norm (i.e. SomaLogic’s new normalization)
@@ -167,8 +174,8 @@ CVbreak(Soma1,Soma2,"OA",SomaOnly,"combined Soma Only")
 CVbreak(Soma1,Soma2,"INJ",SomaOnly,"combined Soma Only")
 
 print("SomaOnly accuracy against external controls")
-ExtVal(Soma1)
-
+exOA6 <- ExtVal(Soma1,"OA")
+exINJ6 <- ExtVal(Soma1,"INJ")
 
 # Darryl norm + ComBat
 TestSoma <- MyCombat(Soma1,Soma2,0)
@@ -186,7 +193,8 @@ CVbreak(Soma1,Soma2,"INJ",combat_Soma,"combat_Soma")
 
 print("combat_Soma accuracy against external controls")
 cutCombat_Soma = Soma1[which(grepl("Sample",Soma1[,"SampleType"])),1:(which(colnames(Soma1)=="CRYBB2.10000.28")-1)]
-ExtVal(cbind(cutCombat_Soma,combat_Soma[1:nrow(cutCombat_Soma),]))
+exOA7 <- ExtVal(cbind(cutCombat_Soma,combat_Soma[1:nrow(cutCombat_Soma),]),"OA")
+exINJ7 <- ExtVal(cbind(cutCombat_Soma,combat_Soma[1:nrow(cutCombat_Soma),]),"INJ")
 
 # log + “Full norm”, i.e. using tranche 1 calibrators for both tranches
 TestMyFullLogOnly <- MyCombat(MySoma1FullLog,MySoma2FullLog,1)
@@ -203,7 +211,8 @@ CVbreak(MySoma1FullLog,MySoma2FullLog,"OA",MyFullLogOnly,"combined my full norm 
 CVbreak(MySoma1FullLog,MySoma2FullLog,"INJ",MyFullLogOnly,"combined my full norm on log RFU")
 
 print("MySoma1FullLog accuracy against external controls")
-ExtVal(MySoma1FullLog)
+exOA8 <- ExtVal(MySoma1FullLog,"OA")
+exINJ8 <- ExtVal(MySoma1FullLog,"INJ")
 
 # log + Full norm + ComBat
 TestFullLogCombat <- MyCombat(MySoma1FullLog,MySoma2FullLog,0)
@@ -216,12 +225,13 @@ PlotPCA(combat_MySomaFullLog,batchMeta_MySomaFullLog,3,2,"PCA on combatted my fu
 PlotUmap(combat_MySomaFullLog,batchMeta_MySomaFullLog,1,"UMAP on combatted my full norm on log RFU")
 PlotUmap(combat_MySomaFullLog,batchMeta_MySomaFullLog,2,"UMAP on combatted my full norm on log RFU")
 
-CVbreak(MySoma1FullLog,MySoma2FullLog,"OA",combat_MySomaFullLog,"combatted my full norm on log RFU")
-CVbreak(MySoma1FullLog,MySoma2FullLog,"INJ",combat_MySomaFullLog,"combatted my full norm on log RFU")
+exOA9 <- CVbreak(MySoma1FullLog,MySoma2FullLog,"OA",combat_MySomaFullLog,"combatted my full norm on log RFU")
+exINJ9 <-CVbreak(MySoma1FullLog,MySoma2FullLog,"INJ",combat_MySomaFullLog,"combatted my full norm on log RFU")
 
 print("Combatted MySoma1FullLog accuracy against external controls")
 cutCombat_MyFullCombat = MySoma1FullLog[which(grepl("Sample",MySoma1FullLog[,"SampleType"])),1:(which(colnames(MySoma1FullLog)=="CRYBB2.10000.28")-1)]
-ExtVal(cbind(cutCombat_MyFullCombat,combat_MySomaFullLog[1:nrow(cutCombat_MyFullCombat),]))
+ExtVal(cbind(cutCombat_MyFullCombat,combat_MySomaFullLog[1:nrow(cutCombat_MyFullCombat),]),"OA")
+ExtVal(cbind(cutCombat_MyFullCombat,combat_MySomaFullLog[1:nrow(cutCombat_MyFullCombat),]),"INJ")
 
 
 dev.off()
@@ -241,12 +251,45 @@ normList = list("RawM1"=RawM1,"RawM2"=RawM2,"CombinedRaw"=CombinedRaw,
                 "Soma1"=Soma1,"Soma2"=Soma2,"SomaOnly"=SomaOnly,"combat_Soma"=combat_Soma)
 saveRDS(normList,file="normList.rds")
 
-batchMeta = list()batchMeta_Raw
+batchMeta = list("batchMeta_Raw"=batchMeta_Raw,
+                 "batchMeta_HybOnly"=batchMeta_HybOnly,
+                 "batchMeta_MySomaHyb"=batchMeta_MySomaHyb,
+                 "batchMeta_MyFullOnly"=batchMeta_MyFullOnly,
+                 "batchMeta_MySomaFul"=batchMeta_MySomaFul,
+                 "batchMeta_SomaOnly"=batchMeta_SomaOnly,
+                 "batchMeta_Soma"=batchMeta_Soma)
+saveRDS(batchMeta,file="batchMeta.rds")
 
-batchMeta_HybOnly
+save(RawM1,RawM2,CombinedRaw,
+     MySoma1Hyb,MySoma2Hyb,CombinedHyb,combat_MySomaHyb,
+     MySoma1Full,MySoma2Full,MyFullOnly,combat_MySomaFull,
+     Soma1,Soma2,SomaOnly,combat_Soma,batchMeta_Raw,
+     batchMeta_HybOnly, batchMeta_MySomaHyb,batchMeta_MyFullOnly,
+     batchMeta_MySomaFul,batchMeta_SomaOnly,batchMeta_Soma,file="normList.RData")
 
-batchMeta_MySomaHyb
+load("normList.RData")
 
-batchMeta_SomaOnly
+### plot external check among all normalisations
+externalCheck <- cbind(exOA1[,1:3],exOA2[,3],exOA3[,3],exOA4[,3],exOA5[,3],exOA6[,3],exOA7[,3]) ### for OA patients
+# externalCheck <- cbind(exINJ1[,1:3],exINJ2[,3],exINJ3[,3],exINJ4[,3],exINJ5[,3],exINJ6[,3],exINJ7[,3]) ### for Injury patients
 
-batchMeta_Soma
+CorDatY = as.matrix(externalCheck[,3],ncol=1)
+CorDatX = rep(as.matrix(externalCheck[,2],ncol=1),(ncol(externalCheck)-2))
+CorC = rep(seq(1:(ncol(externalCheck)-2)),rep(nrow(externalCheck),ncol(externalCheck)-2))
+for(k in 4:ncol(externalCheck)){
+  CorDatY =  rbind(CorDatY,as.matrix(externalCheck[,k],ncol=1))
+}
+colnames(CorDatY) = "CorDatY"
+CorDatP = as.data.frame(cbind(CorDatX,CorC,CorDatY))
+
+xlabels=c("Raw","Hybnorm only","Hybnorm only + ComBat","Full norm","Full norm + ComBa","SomaLogic norm","SomaLogic norm + ComBat")
+
+ggplot(data = CorDatP) + geom_line(aes(x=CorC,y=as.numeric(CorDatY),group=CorDatX,col=CorDatX)) + ggtitle("Correlation between RFUs and immunoassay for OA patients") +
+  xlab("Normalisations") + ylab("Correlation coefficient") +labs(color = "SomaName") + scale_x_discrete(breaks=seq(1:7),labels=xlabels) + 
+  theme(axis.text.x = element_text(size=6, angle=20),legend.title =element_text(size = 6), legend.text = element_text(size = 6),plot.title=element_text(size = 10,face="bold",hjust=0.5),
+        axis.title.y =element_text(size=8),axis.title.x =element_text(size=8)) 
+
+# ggplot(data = CorDatP) + geom_line(aes(x=CorC,y=as.numeric(CorDatY),group=CorDatX,col=CorDatX)) + ggtitle("Correlation between RFUs and immunoassay for Injury patients") +
+#   xlab("Normalisations") + ylab("Correlation coefficient") +labs(color = "SomaName") + scale_x_discrete(breaks=seq(1:7),labels=xlabels) + 
+#   theme(axis.text.x = element_text(size=6, angle=20),legend.title =element_text(size = 6), legend.text = element_text(size = 6),plot.title=element_text(size = 10,face="bold",hjust=0.5),
+#         axis.title.y =element_text(size=8),axis.title.x =element_text(size=8)) 

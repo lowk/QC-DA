@@ -830,12 +830,24 @@ ExtVal <- function(exprDatM,clinicType){
   names(CorData_norm) <- c("SandwichName","SomaName","cor","Pvalue","N")
   
   for (compCounter in 1:length(toTest1)){
-    CorData_norm[compCounter,] <- getpars(sandwich_master,exprDat_norm,toTest1[compCounter],toTest2[compCounter])
+    CorData_norm[compCounter,] <- getpars(sandwich_master,exprDatM,toTest1[compCounter],toTest2[compCounter])
   }
   return(CorData_norm)
 }
 
-getpars <- function(sandwich_master,exprDat_norm,par1,par2) {
+getpars <- function(sandwich_master,exprDatM,par1,par2) {
+  metadata_xls <- read_excel("STEpUP_QCData_Tranche1.xlsx")
+  temp1 <- data.frame(as.matrix(metadata_xls)[-1,1:17])
+  names(temp1) <- as.matrix(metadata_xls)[1,1:17]
+  metadata <- temp1
+  rownames(metadata) <- metadata$`STEpUP Sample Identification Number (SIN)`
+  stepupID <- exprDatM$SampleId[grep("STEP",exprDatM$SampleId)]
+  stepupID[stepupID == "STEP1409F-V1-HT1"] <- "STEP1409-F-V1-HT1" #fix an apparant typo
+  stepupID <- gsub("F-V1","V1-F",stepupID) #ID ordering seems to have changed?
+  plateID <- exprDatM$PlateId[grep("STEP",exprDatM$SampleId)]
+  exprDat_norm <- exprDatM[grep("STEP",exprDatM$SampleId),which(colnames(exprDatM)=="CRYBB2.10000.28"):ncol(exprDatM)]
+  #reorder meta-data
+  metadata_reord <- metadata[stepupID,]
   temp1 <- sandwich_master[as.character(metadata_reord$`STEpUP Participant Identification Number (PIN)`),]
   
   if (sum(!(is.na(temp1[,par1] + exprDat_norm[,par2]))) == 0) return(c(par1,par2,NA,NA,0))
