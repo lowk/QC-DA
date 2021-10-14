@@ -1,11 +1,17 @@
 ### filter to exclude buffer|calibrator, select only clinical samples and human proteins
 ### input RFU matrix after normalisation steps, output filtered RFU matrix only with human data 
-filterHM <- function(MySoma,BioMeta){
+# filterHM <- function(MySoma,BioMeta){
+#   HMpro <- which(!grepl("HybControlElution|Non",colnames(MySoma)))
+#   HMsam <- which(grepl("Sample",MySoma[,"SampleType"]))
+#   MySomaDone <- MySoma[HMsam,HMpro]
+#   BioMetaDone <- BioMeta[HMsam,]
+#   return(list(MySomaDone,BioMetaDone))
+# }
+filterHM <- function(MySoma){
   HMpro <- which(!grepl("HybControlElution|Non",colnames(MySoma)))
   HMsam <- which(grepl("Sample",MySoma[,"SampleType"]))
   MySomaDone <- MySoma[HMsam,HMpro]
-  BioMetaDone <- BioMeta[HMsam,]
-  return(list(MySomaDone,BioMetaDone))
+  return(MySomaDone)
 }
 
 ### get plate batch
@@ -29,16 +35,6 @@ UserNorm <- function(Funlist,RawM){
     RawM = MySoma
   }
   return(MySoma)
-}
-
-
-### check my code accuracy by comparing our normalisation and somalogic provided normalised data
-checkMyCode <- function(RawM,SomaFile,Flist){
-  SomaM <- read.adat(SomaFile)
-  MySoma = UserNorm(Flist,RawM)
-  corShip = CompTWO(SomaM,MySoma) 
-  DatStartId <- which(colnames(MySoma)=="CRYBB2.10000.28")
-  colnames(MySoma[DatStartId:ncol(MySoma)])[which(corShip<0.7)] ### different analyses
 }
 
 
@@ -414,37 +410,53 @@ MIDNORMsamp = function(RawM){
 }
 
 
-### compare correlation coefficiency among two RFUs
-CompTWO <- function(SomaM,MySoma){
+### function "CompTWO": conveniently compare any two Somalogic RFU matrix with the same dimensions. SomaM and MySoma are any two RUFs, with same dimensions. 
+### output non matching rownames and colnames, and also use corThresh to set below which correlation coefficient, the protein names will be displayed. 
+
+CompTWO <- function(SomaM,MySoma,corThresh){
   
   DatStartId1 <- which(colnames(SomaM)=="CRYBB2.10000.28")
   DatStartId2 <- which(colnames(MySoma)=="CRYBB2.10000.28")
   
   rowOrderName = rownames(SomaM)
   rowOrder = vector(mode="numeric",length=nrow(SomaM))
+  rowKK=1
+  notMatchRow=vector() ### rowKK, notMatchRow: extend code compatibility, when there are none matching records
   for (j in 1:nrow(SomaM)){
-    rowOrder[j] = which(rownames(MySoma) %in% rowOrderName[j])
+    if(!any(rownames(MySoma)==rowOrderName[j])){notMatchRow[rowKK]=j
+    rowKK=rowKK+1}
+    else{rowOrder[j] = which(rownames(MySoma) %in% rowOrderName[j])}
   }
+  print(paste("row name not match: ",rowOrderName[notMatchRow]))
   
   colOrderName = colnames(SomaM)[DatStartId1:ncol(SomaM)]
   colOrder = vector(mode="numeric",length=length(colOrderName))
+  colKK=1
+  notMatchCol=vector()
   for (k in 1:length(colOrder)){
-    colOrder[k] = which(colnames(MySoma)[DatStartId2:ncol(MySoma)] %in% colOrderName[k])
+    if(!any(colnames(MySoma)[DatStartId2:ncol(MySoma)]==colOrderName[k])){notMatchCol[colKK] = k
+    colKK=colKK+1}
+    else{colOrder[k] = which(colnames(MySoma)[DatStartId2:ncol(MySoma)] %in% colOrderName[k])}
   }
+  print(paste("column name not match in Soma: ",colOrderName[notMatchCol]))
   
-  MySomaDone = MySoma[rowOrder,c(1:DatStartId2-1,colOrder+DatStartId2-1)]
-  
+  # MySomaDone = MySoma[rowOrder,c(1:DatStartId2-1,colOrder+DatStartId2-1)]
   ### check row names colnames matching between two matrices
   # all(rownames(MySomaDone)==rownames(SomaM))
   # all(colnames(MySomaDone)[DatStartId2:ncol(MySomaDone)]==colnames(SomaM)[DatStartId1:ncol(SomaM)])
   
-  corShip = vector(mode = "numeric", length=length(colOrderName)) ### correlation between my calculation and Adat
+  corShip = vector(mode = "numeric", length=length(colOrder)) ### correlation between my calculation and Adat
   for(dd in 1:length(corShip)){
-    corShip[dd] = cor(MySomaDone[,dd+DatStartId2-1],SomaM[,dd+DatStartId1-1])
+    if(!(dd %in% notMatchCol)){
+      if(length(notMatchRow)!=0){corShip[dd] = cor(MySoma[rowOrder,colOrder[dd]+DatStartId2-1],SomaM[!notMatchRow,dd+DatStartId1-1])}
+      else{corShip[dd] = cor(MySoma[rowOrder,colOrder[dd]+DatStartId2-1],SomaM[,dd+DatStartId1-1])}
+    }
+    else{corShip[dd]=NA}
   }
   
-  plot(corShip)
-  return(corShip)
+  plot(corShip[!is.na(corShip)],ylab="correlation coefficient")
+  print(paste("correlation coefficient between minimum value of ", min(corShip[!is.na(corShip)])," to user selected threshold of",corThresh, " :",colnames(SomaM)[DatStartId1:ncol(SomaM)][which(corShip<corThresh)]))
+  return()
 }
 
 ### divide RawM into two disease groups, analyse individually.clinicType:"OA"/"Injury"
@@ -461,7 +473,7 @@ ExtractClinicG = function(RawM,inputfile,trancheT){
   ###01 JAN 2021 = 44197 as our up to date
   if(trancheT==1){sampleAgeInfor <- 2021 - metadata$`Date of biological sampling`
   }else{sampleAgeInfor <- floor((44197 - metadata$`Date of biological sampling`)/365)}
-    
+  
   patientGenderInfor = metadata$`Patient gender`
   patientAgeInfor = metadata$`Patient age at Baseline SF sample`
   
@@ -539,7 +551,7 @@ KNNtest <- function(exprDat_norm,BioMeta,myRound,kBatch){
     positiveRate = matrix(NA,nrow=length(kNearS),ncol=length(sampSizeS))
     batchTest = vector(mode="list",length=kBatch)
     
-    for (batchCf in 1:kBatch){ 
+    for (batchCf in 1:kBatch){
       tblWh = table(BioMeta[,batchCf])
       EpectedRio = tblWh/sum(tblWh)
       
@@ -549,7 +561,7 @@ KNNtest <- function(exprDat_norm,BioMeta,myRound,kBatch){
         
         for (neiSize in 1:length(kNearS)){
           
-          kNear = kNearS[neiSize]   ###set neighborhood 
+          kNear = kNearS[neiSize]   ###set neighborhood
           
           idInMetaR = matrix(NA,nrow=kNear-1,ncol=1)
           testSampYN = matrix(NA,nrow=sampSize,ncol=1)
@@ -563,7 +575,7 @@ KNNtest <- function(exprDat_norm,BioMeta,myRound,kBatch){
             
             neiNameList = rownames(BioMeta)
             
-            for (neiCounter in 1:(kNear-1)){ 
+            for (neiCounter in 1:(kNear-1)){
               idInMetaR[neiCounter] = which(neiNameList %in% neiborOriID[neiCounter]) ### meta for tested sample
             }
             
@@ -587,14 +599,14 @@ KNNtest <- function(exprDat_norm,BioMeta,myRound,kBatch){
             
             ### chi square based multinomial test, power is less than above one
             # chi.sq.value <- sum((tblTest[1,]/sampSize - EpectedRio)^2/EpectedRio)
-            #  
+            #
             # reportYN <- 1 - pchisq(chi.sq.value, df=length(unique(MetaRaw[,batchCf]))-1) #p-value for the result
             
             ### hypothesis test, local batch label distribution against the global label distribution
             if(reportYN < 0.05/sampSize) {testSampYN [testP] = 1} ###using Bonferroni adjusted p values
             else {testSampYN[testP] = 0}
             
-          } 
+          }
           
           positiveRate[neiSize,sampSct] = length(which(testSampYN == 1)) / length(testSampYN)
           colnames(positiveRate) = sampSizeS
@@ -617,3 +629,237 @@ KNNtest <- function(exprDat_norm,BioMeta,myRound,kBatch){
   
   return(BatchEffect)
 }
+
+### initialise required metadata for normalisation methods
+initQCnorm <- function(inputfile1,inputfile2){
+  
+  RawM <- read.adat(inputfile1) 
+  ### read in Col^MetaTable
+  
+  con1 = file(inputfile2, "r")
+  
+  while(TRUE) {
+    sline = readLines(con1, n=1)
+    
+    if(length(sline) == 0){
+      print("Meta data not intact")
+      break}
+    
+    slineL = strsplit(sline,'\t')[[1]]
+    
+    if(length(slineL) > 28){
+      getStartTerm = which(slineL!="")[1]
+      getStartId = getStartTerm+1
+      
+      if(slineL[getStartTerm]=="TargetFullName"){ TargetFullName <<- slineL[getStartId:length(slineL)]}
+      if(slineL[getStartTerm]=="Target"){ Target <<- slineL[getStartId:length(slineL)]}
+      if(slineL[getStartTerm]=="UniProt"){ UniProt <<- slineL[getStartId:length(slineL)]}
+      if(slineL[getStartTerm]=="EntrezGeneID"){ EntrezGeneID <<- slineL[getStartId:length(slineL)]}
+      if(slineL[getStartTerm]=="EntrezGeneSymbol"){ EntrezGeneSymbol <<- slineL[getStartId:length(slineL)]}
+      if(slineL[getStartTerm]=="Type"){Type <<- slineL[getStartId:length(slineL)]}
+      if(slineL[getStartTerm]=="Dilution"){Dilution <<- slineL[getStartId:length(slineL)]}
+      # if(slineL[getStartTerm]=="medNormRefSMP_ReferenceRFU"){
+      #   medNormRefSMP <<- as.numeric(slineL[getStartId:length(slineL)])
+      if(slineL[getStartTerm]=="PlateScale_Reference"){
+        PlateScale_Reference <<- as.numeric(slineL[getStartId:length(slineL)])
+        
+        break} 
+    }
+  }
+  close(con1)
+  
+  DatStartId = which(colnames(RawM) == "CRYBB2.10000.28")
+  ColTable <- cbind(as.matrix(colnames(RawM)[DatStartId:ncol(RawM)]),as.matrix(UniProt),as.matrix(EntrezGeneID),as.matrix(EntrezGeneSymbol),as.matrix(TargetFullName),as.matrix(Target))
+  colnames(ColTable) <- list("Protein Name", "UniPro ID", 'EntrezGeneID',"EntrezGeneSymbol","TargetFullName","Target")
+  
+  EntrezID = vector(mode="integer",length=nrow(ColTable)) ### ColTable: change multiple geneIDs to the first 1
+  for (EntrezID in 1:nrow(ColTable)){
+    IDsymlist = strsplit(ColTable[,"EntrezGeneSymbol"][EntrezID]," ")
+    IDlist = strsplit(ColTable[,"EntrezGeneID"][EntrezID]," ")
+    if(length(IDsymlist[[1]])>1){ColTable[,"EntrezGeneSymbol"][EntrezID]=IDsymlist[[1]][1]
+    ColTable[,"EntrezGeneID"][EntrezID]=IDlist[[1]][1]}
+  } 
+  
+  return(ColTable)
+}
+
+### combine tranches data and sva::combat function to remove batches
+MyCombat <- function(RFU1,RFU2,noCombat){
+  
+  Done1 <- filterHM(RFU1)
+  Done2 <- filterHM(RFU2)
+  tranche <- c(rep(1,nrow(Done1)),rep(2,nrow(Done2)))
+  MySomaPlate <- as.matrix(c(Done1[,"PlateId"],Done2[,"PlateId"]),ncol=1)
+  PlateBatch <- GetPlateBatch(MySomaPlate)
+  BatchMeta = cbind(tranche,PlateBatch)
+  
+  DoneAll <- rbind(Done1[,c(1:13,which(colnames(Done1) == "CRYBB2.10000.28"):ncol(Done1))],Done2[,c(1:13,which(colnames(Done2) == "CRYBB2.10000.28"):ncol(Done2))])
+  DoneAllDat <- rbind(Done1[,which(colnames(Done1) == "CRYBB2.10000.28"):ncol(Done1)],Done2[,which(colnames(Done2) == "CRYBB2.10000.28"):ncol(Done2)])
+  rownames(BatchMeta)=rownames(DoneAll)
+  colnames(BatchMeta) = c("Tranche Batch","Plate Batch")
+  PlateBatch <- as.vector(PlateBatch) ### Combat argument requirement
+  
+  if(noCombat==1){combat_all_batch = t(log(DoneAllDat))
+  combat_all = data.frame(log(DoneAllDat))}
+  else{combat_all_batch <- sva::ComBat(t(log(DoneAllDat)), PlateBatch, mod=NULL, par.prior = TRUE, prior.plots = FALSE)
+  combat_all = data.frame(t(combat_all_batch))}
+  
+  batchTest <- KNNtest(t(combat_all_batch),BatchMeta,2,2)
+  
+  return(list(combat_all,batchTest,BatchMeta))
+}
+
+
+PlotPCA <- function(exprDat,BatchMeta,topPC,confounderC,titleMessage){
+  pc_norm <- prcomp(as.matrix(exprDat),scale = TRUE)
+  PlotDat = data.frame(cbind(pc_norm$x[,1:topPC],BatchMeta))
+  
+  gp <- ggpairs(PlotDat, columns=1:topPC, aes(color= as.factor(PlotDat[,topPC+confounderC])),
+                title=titleMessage,
+                diag=list(continuous=wrap("densityDiag",alpha=0.4)),
+                lower=list(continuous = wrap("points",alpha=0.9,size=0.1)),
+                upper = list(continuous = "blank"),
+                legend = c(1,1)) + labs(fill = colnames(BatchMeta)[confounderC])
+  return(gp)
+}
+
+PlotUmap <- function(exprDat,BatchMeta,confounderC,titleMessage){
+  myUmap = umap(t(exprDat))
+  df <- data.frame(x = myUmap$data[,"X1"],
+                   y = myUmap$data[,"X2"],
+                   WhichBatch = factor(BatchMeta[,confounderC]))
+  colnames(df) = c("D1","D2",colnames(BatchMeta)[confounderC])
+  ggplot(df, aes(x=D1, y=D2, color = df[,3])) +
+    geom_point() + labs(title=titleMessage,color=colnames(BatchMeta)[confounderC])
+}
+
+CVbreak <- function(RFU1,RFU2,clinicType,exprDat,titleMessage){
+  par(mfrow=c(1,2))
+  
+  Done1 <- filterHM(RFU1)
+  Done2 <- filterHM(RFU2)
+  
+  DoneAll <- rbind(Done1[,c(1:13,which(colnames(Done1) == "CRYBB2.10000.28"):ncol(Done1))],Done2[,c(1:13,which(colnames(Done2) == "CRYBB2.10000.28"):ncol(Done2))])
+  exprDat_Mr <- data.frame(cbind(DoneAll[,c(1:13)],exprDat)) 
+  calib_normM <- exprDat_Mr[grep(paste(clinicType,"POOL"),exprDat_Mr$SampleId),]
+  calib_norm <- as.matrix(calib_normM[,-c(1:(which(colnames(calib_normM)=="CRYBB2.10000.28")-1))])
+  calibIDs <- calib_normM$SampleId
+  
+  if(clinicType == "OA"){suffix = "/29"
+  freezeThaw <-  calibIDs %in% paste0("OA POOL-HT-",c(6,25,26),suffix)
+  }else{suffix = "/25"
+  freezeThaw <-  calibIDs %in% paste0("INJ POOL-HT-",c(6,25),suffix)}
+  
+  acrossPlates <- calibIDs %in% paste0(clinicType," POOL-HT-",c(1:5,7:13),suffix)
+  withinPlates <- calibIDs %in% paste0(clinicType," POOL-HT-",c(1,6),suffix)
+  
+  
+  temp1 <- (apply(calib_norm[acrossPlates,],2,sd)/apply(calib_norm[acrossPlates,],2,mean))
+  temp2 <- (apply(calib_norm[withinPlates,],2,sd)/apply(calib_norm[withinPlates,],2,mean))
+  
+  plot(100*quantile(temp1,seq(0,1,length.out=100)),seq(0,1,length.out=100),type="l",xlim=c(0,10),xlab=paste("%CV",clinicType,"Group"),ylab="Cumulative total",main="",lwd=2,cex.lab=1.5)
+  lines(100*quantile(temp2,seq(0,1,length.out=100)),seq(0,1,length.out=100),type="l",lwd=2,col="red")
+  lines(c(0,quantile(temp1,0.8))*100,c(0.8,0.8),lty=2)
+  lines(c(quantile(temp1,0.8),quantile(temp1,0.8))*100,c(0.8,0),lty=2)
+  lines(c(0,quantile(temp2,0.8))*100,c(0.8,0.8),lty=2,col="red")
+  lines(c(quantile(temp2,0.8),quantile(temp2,0.8))*100,c(0.8,0),lty=2,col="red")
+  legend(8,0.4,c("Across Plates","Within Plates"),lwd=2,col=c("blue","red"),xpd=T,cex=0.75)
+  
+  ### across  tranche
+  tempAct = matrix(0,nrow=5,ncol=ncol(calib_norm))
+  
+  for(i in 1:5){
+    acrossTranche <- which(calibIDs %in% paste0(clinicType," POOL-HT-",c(i,i+6),suffix))
+    tempAct[i,] <- apply(calib_norm[acrossTranche,],2,sd)/apply(calib_norm[acrossTranche,],2,mean)
+  }
+  tempAct <- apply(tempAct,2,mean)
+  
+  ### within tranche
+  withinTranche1 <- calibIDs %in% paste0(clinicType," POOL-HT-",c(1:5),suffix)
+  withinTranche2 <- calibIDs %in% paste0(clinicType," POOL-HT-",c(7:13),suffix)
+  tempAct11= apply(calib_norm[withinTranche1,],2,sd)/apply(calib_norm[withinTranche1,],2,mean)
+  tempAct22= apply(calib_norm[withinTranche2,],2,sd)/apply(calib_norm[withinTranche2,],2,mean)
+  tempAct2 = (tempAct11+tempAct22)/2
+  
+  
+  plot(100*quantile(tempAct,seq(0,1,length.out=100)),seq(0,1,length.out=100),type="l",xlim=c(0,10),xlab=paste("%CV",clinicType,"Group"),ylab="Cumulative total",main="",lwd=2,cex.lab=1.5)
+  lines(c(0,quantile(tempAct,0.8))*100,c(0.8,0.8),lty=2)
+  lines(c(quantile(tempAct,0.8),quantile(tempAct,0.8))*100,c(0.8,0),lty=2,)
+  lines(100*quantile(tempAct2,seq(0,1,length.out=100)),seq(0,1,length.out=100),type="l",col="red")
+  lines(c(0,quantile(tempAct2,0.8))*100,c(0.8,0.8),lty=2,col="red")
+  lines(c(quantile(tempAct2,0.8),quantile(tempAct2,0.8))*100,c(0.8,0),lty=2,col="red")
+  
+  legend(6,0.4,c("Across Tranche","Within Tranche"),lwd=2,col=c("black","red"),xpd=T,cex=0.75)
+  
+  title(titleMessage)
+  
+  return()
+}
+
+
+ExtractSandwich = function(inputfile){
+  sandwich_master_xls_1 <- read_excel(inputfile,sheet=1)
+  sandwich_master_xls_2 <- read_excel(inputfile,sheet=2)
+  sandwich_master_xls_3 <- read_excel(inputfile,sheet=3)
+  sandwich_master_xls_4 <- read_excel(inputfile,sheet=4,range = "A1:D31", col_names = TRUE)
+  
+  #process Ben data, averaging across replicates
+  temp1 <- data.frame(sandwich_master_xls_2)
+  temp2 <- (temp1[temp1$replicate == 1,-c(1:2)] + temp1[temp1$replicate == 2,-c(1:2)])/2
+  sandwich_master_Ben <- data.frame(PIN=temp1[temp1$replicate == 1,1],temp2)
+  rownames(sandwich_master_Ben) <- sandwich_master_Ben$PIN
+  
+  return(sandwich_master_Ben)
+}
+
+
+
+### toTest1,toTest2 are biomarker lists from sandwich file and adat file individually
+ExtVal <- function(exprDatM){
+  metadata_xls <- read_excel("STEpUP_QCData_Tranche1.xlsx")
+  temp1 <- data.frame(as.matrix(metadata_xls)[-1,1:17])
+  names(temp1) <- as.matrix(metadata_xls)[1,1:17]
+  metadata <- temp1
+  rownames(metadata) <- metadata$`STEpUP Sample Identification Number (SIN)`
+  stepupID <- exprDatM$SampleId[grep("STEP",exprDatM$SampleId)]
+  stepupID[stepupID == "STEP1409F-V1-HT1"] <- "STEP1409-F-V1-HT1" #fix an apparant typo
+  stepupID <- gsub("F-V1","V1-F",stepupID) #ID ordering seems to have changed?
+  plateID <- exprDatM$PlateId[grep("STEP",exprDatM$SampleId)]
+  exprDat_norm <- exprDatM[grep("STEP",exprDatM$SampleId),which(colnames(exprDatM)=="CRYBB2.10000.28"):ncol(exprDatM)]
+  #reorder meta-data
+  metadata_reord <- metadata[stepupID,]
+
+  sandwich_master_xls_2 <- read_excel("Masterlist.xlsx",sheet=2)
+  #process Ben data, averaging across replicates
+  temp1 <- data.frame(sandwich_master_xls_2)
+  temp2 <- (temp1[temp1$replicate == 1,-c(1:2)] + temp1[temp1$replicate == 2,-c(1:2)])/2
+  sandwich_master <- data.frame(PIN=temp1[temp1$replicate == 1,1],temp2)
+  rownames(sandwich_master) <- sandwich_master$PIN
+
+  toTest1 <- c("mcp1bl","il6bl","il8bl","mmp3bl","activinabl","tsg6bl","timp1bl","tgfb1bl","fgf2bl")
+  toTest2 <- c("CCL2.2578.67","IL6.4673.13","CXCL8.3447.64","MMP3.2788.55","INHBA.13738.8","TNFAIP6.5036.50","TIMP1.2211.9","TGFB1.2333.72","FGF2.3025.50")
+
+  CorData_norm = data.frame(matrix(NA,nrow=length(toTest1),ncol=5))
+  names(CorData_norm) <- c("SandwichName","SomaName","cor","Pvalue","N")
+
+  for (compCounter in 1:length(toTest1)){
+    CorData_norm[compCounter,] <- getpars(sandwich_master,exprDat_norm,toTest1[compCounter],toTest2[compCounter])
+  }
+  return(CorData_norm)
+}
+
+getpars <- function(sandwich_master,exprDat_norm,par1,par2) {
+  temp1 <- sandwich_master[as.character(metadata_reord$`STEpUP Participant Identification Number (PIN)`),]
+
+  if (sum(!(is.na(temp1[,par1] + exprDat_norm[,par2]))) == 0) return(c(par1,par2,NA,NA,0))
+  md <- cor.test(temp1[,par1],exprDat_norm[,par2])
+  c(par1,par2,unlist(md[c("estimate","p.value")]),2+md$parameter)
+
+}
+
+getpars2 <- function(temp1,par1,par2,keep) {
+  if (sum(!(is.na(temp1[keep,par1] + exprDat_norm[keep,par2]))) == 0) return(c(par1,par2,NA,NA,0))
+  md <- cor.test(temp1[keep,par1],exprDat_norm[keep,par2])
+  c(par1,par2,unlist(md[c("estimate","p.value")]),2+md$parameter)
+}
+
