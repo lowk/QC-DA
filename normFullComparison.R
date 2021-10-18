@@ -89,9 +89,9 @@ exOA1 <- ExtVal(RawM1,"OA")
 exINJ1 <- ExtVal(RawM1,"INJ")
 
 VarOA1 <- VarExp("OA",RawM1,"RawM1")
-R2repeats(VarOA1,exOA1,"OA")
+R2repeats(VarOA1,exOA1,"OA","RawM1")
 VarINJ1 <- VarExp("INJ",RawM1,"RawM1")
-R2repeats(VarINJ1,exINJ1,"INJ")
+R2repeats(VarINJ1,exINJ1,"INJ","RawM1")
 
 # Hybnorm only on individual tranche and then combine for batch test
 TestHyb <- MyCombat(MySoma1Hyb,MySoma2Hyb,1) ### without combat
@@ -112,9 +112,9 @@ exOA2 <-ExtVal(MySoma1Hyb,"OA")
 exINJ2 <- ExtVal(MySoma1Hyb,"INJ")
 
 VarOA2 <- VarExp("OA",MySoma1Hyb,"MySoma1Hyb")
-R2repeats(VarOA2,exOA2,"OA")
+R2repeats(VarOA2,exOA2,"OA","MySoma1Hyb")
 VarINJ2 <- VarExp("INJ",MySoma1Hyb,"MySoma1Hyb")
-R2repeats(VarINJ2,exINJ2,"INJ")
+R2repeats(VarINJ2,exINJ2,"INJ","MySoma1Hyb")
 
 # Hybnorm only + ComBat  ### 0 means no further combat after normalisation on individual tranche; 1 means further combat applied
 TestMyHyb <- MyCombat(MySoma1Hyb,MySoma2Hyb,0)
@@ -136,9 +136,9 @@ exOA3 <- ExtVal(cbind(cutMySoma1Hyb,combat_MySomaHyb[1:nrow(cutMySoma1Hyb),]),"O
 exINJ3 <- ExtVal(cbind(cutMySoma1Hyb,combat_MySomaHyb[1:nrow(cutMySoma1Hyb),]),"INJ")
 
 VarOA3 <- VarExp("OA",cbind(cutMySoma1Hyb,combat_MySomaHyb[1:nrow(cutMySoma1Hyb),]),"MySoma1Hyb+combat")
-R2repeats(VarOA3,exOA3,"OA")
+R2repeats(VarOA3,exOA3,"OA","MySoma1Hyb+combat")
 VarINJ3 <- VarExp("INJ",cbind(cutMySoma1Hyb,combat_MySomaHyb[1:nrow(cutMySoma1Hyb),]),"MySoma1Hyb+combat")
-R2repeats(VarINJ3,exINJ3,"INJ")
+R2repeats(VarINJ3,exINJ3,"INJ","MySoma1Hyb+combat")
 
 # “Full norm”, i.e. using tranche 1 calibrators for both tranches, then combine full normed two tranches for batch test
 TestMyFullOnly <- MyCombat(MySoma1Full,MySoma2Full,1)
@@ -159,9 +159,9 @@ exOA4 <- ExtVal(MySoma1Full,"OA")
 exINJ4 <- ExtVal(MySoma1Full,"INJ")
 
 VarOA4 <- VarExp("OA",MySoma1Full,"MySoma1Full")
-R2repeats(VarOA4,exOA4,"OA")
+R2repeats(VarOA4,exOA4,"OA","MySoma1Full")
 VarINJ4 <- VarExp("INJ",MySoma1Full,"MySoma1Full")
-R2repeats(VarINJ4,exINJ4,"INJ")
+R2repeats(VarINJ4,exINJ4,"INJ","MySoma1Full")
 
 # Full norm + ComBat
 TestMyFull <- MyCombat(MySoma1Full,MySoma2Full,0)
@@ -183,9 +183,9 @@ exOA5 <- ExtVal(cbind(cutMySoma1Full,combat_MySomaFull[1:nrow(cutMySoma1Hyb),]),
 exINJ5 <- ExtVal(cbind(cutMySoma1Full,combat_MySomaFull[1:nrow(cutMySoma1Hyb),]),"INJ")
 
 VarOA5 <- VarExp("OA",cbind(cutMySoma1Full,combat_MySomaFull[1:nrow(cutMySoma1Hyb),]),"MySoma1Full+combat")
-R2repeats(VarOA5,exOA5,"OA")
+R2repeats(VarOA5,exOA5,"OA","MySoma1Full+combat")
 VarINJ5 <- VarExp("INJ",cbind(cutMySoma1Full,combat_MySomaFull[1:nrow(cutMySoma1Hyb),]),"MySoma1Full+combat")
-R2repeats(VarINJ5,exINJ5,"INJ")
+R2repeats(VarINJ5,exINJ5,"INJ","MySoma1Full+combat")
 
 # Darryl norm (i.e. SomaLogic’s new normalization). Combine somalogic normliased two tranches data for batch test.
 TestSomaOnly <- MyCombat(Soma1,Soma2,1)
@@ -206,9 +206,9 @@ exOA6 <- ExtVal(Soma1,"OA")
 exINJ6 <- ExtVal(Soma1,"INJ")
 
 VarOA6 <- VarExp("OA",Soma1,"Soma1")
-R2repeats(VarOA6,exOA6,"OA")
+R2repeats(VarOA6,exOA6,"OA","Soma1")
 VarINJ6 <- VarExp("INJ",Soma1,"Soma1")
-R2repeats(VarINJ6,exINJ6,"INJ")
+R2repeats(VarINJ6,exINJ6,"INJ","Soma1")
 
 # Darryl norm + ComBat. combine somalogic normalised data and furhter combat correction for batch test.
 TestSoma <- MyCombat(Soma1,Soma2,0)
@@ -230,9 +230,9 @@ exOA7 <- ExtVal(cbind(cutCombat_Soma,combat_Soma[1:nrow(cutCombat_Soma),]),"OA")
 exINJ7 <- ExtVal(cbind(cutCombat_Soma,combat_Soma[1:nrow(cutCombat_Soma),]),"INJ")
 
 VarOA7 <- VarExp("OA",cbind(cutCombat_Soma,combat_Soma[1:nrow(cutCombat_Soma),]),"Soma1+combat")
-R2repeats(VarOA7,exOA7,"OA")
+R2repeats(VarOA7,exOA7,"OA","Soma1+combat")
 VarINJ7 <- VarExp("INJ",cbind(cutCombat_Soma,combat_Soma[1:nrow(cutCombat_Soma),]),"Soma1+combat")
-R2repeats(VarINJ7,exINJ7,"INJ")
+R2repeats(VarINJ7,exINJ7,"INJ","Soma1+combat")
 
 # log + “Full norm”, i.e. using tranche 1 calibrators for both tranches. Log transform on raw RFUs before normalisation
 TestMyFullLogOnly <- MyCombat(MySoma1FullLog,MySoma2FullLog,1)
@@ -251,6 +251,11 @@ CVbreak(MySoma1FullLog,MySoma2FullLog,"INJ",MyFullLogOnly,"combined my full norm
 print("MySoma1FullLog accuracy against external controls")
 exOA8 <- ExtVal(MySoma1FullLog,"OA")
 exINJ8 <- ExtVal(MySoma1FullLog,"INJ")
+
+VarOA8 <- VarExp("OA",MySoma1FullLog,"MySoma1FullLog")
+R2repeats(VarOA8,exOA8,"OA","MySoma1FullLog")
+VarINJ8 <- VarExp("INJ",MySoma1FullLog,"MySoma1FullLog")
+R2repeats(VarINJ8,exINJ8,"INJ","MySoma1FullLog")
 
 # log + Full norm + ComBat
 TestFullLogCombat <- MyCombat(MySoma1FullLog,MySoma2FullLog,0)
@@ -271,6 +276,10 @@ cutCombat_MyFullCombat = MySoma1FullLog[which(grepl("Sample",MySoma1FullLog[,"Sa
 ExtVal(cbind(cutCombat_MyFullCombat,combat_MySomaFullLog[1:nrow(cutCombat_MyFullCombat),]),"OA")
 ExtVal(cbind(cutCombat_MyFullCombat,combat_MySomaFullLog[1:nrow(cutCombat_MyFullCombat),]),"INJ")
 
+VarOA9 <- VarExp("OA",cbind(cutCombat_MyFullCombat,combat_MySomaFullLog[1:nrow(cutCombat_MyFullCombat),]),"combatted my full norm on log RFU")
+R2repeats(VarOA9,exOA9,"OA","combatted my full norm on log RFU")
+VarINJ9 <- VarExp("INJ",cbind(cutCombat_MyFullCombat,combat_MySomaFullLog[1:nrow(cutCombat_MyFullCombat),]),"combatted my full norm on log RFU")
+R2repeats(VarINJ9,exINJ9,"INJ","combatted my full norm on log RFU")
 
 dev.off()
 
