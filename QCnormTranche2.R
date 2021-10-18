@@ -883,7 +883,7 @@ VarExp <- function(clinicType,exprDat_normM,titleMessage){
   temp <- apply(calib_norm[grep(clinicType,calibIDs),],2,var)/apply(exprDat_norm,2,var)
   temp[temp > 1] <- 1
   R2_norm <- (1 - temp)^2
-  plot(quantile(R2_norm,1 - seq(0,1,length.out=100)),seq(0,1,length.out=100),xlim=c(1,0),type="l",xlab=paste("R2",clinicType),ylab="Cumulative total",main=paste(titleMessage))
+  plot(quantile(R2_norm,1 - seq(0,1,length.out=100)),seq(0,1,length.out=100),xlim=c(1,0),type="l",xlab=paste("R2",clinicType),ylab="Cumulative total",main=paste(titleMessage),cex.main=1.2,cex.lab=1.2)
   abline(h=0.8,lty=2)
   abline(v=quantile(R2_norm,1 - 0.8),lty=2)
   return(R2_norm)
@@ -891,7 +891,7 @@ VarExp <- function(clinicType,exprDat_normM,titleMessage){
 
 ### using variation explained by calibrators to predict correlation coefficients with external immunoessay 
 R2repeats = function(R2_norm,CorData_norm,clinicType,titleMessage){
-  plot(R2_norm[CorData_norm$SomaName],as.numeric(CorData_norm$cor)^2,xlab="Predicted R2",ylab="Actual R2",xlim=c(0,1.05),ylim=c(0,1.05),main=paste(clinicType,"Group ",titleMessage),cex.main=2,cex.lab=1.5)
+  plot(R2_norm[CorData_norm$SomaName],as.numeric(CorData_norm$cor)^2,xlab="Predicted R2",ylab="Actual R2",xlim=c(0,1.05),ylim=c(0,1.05),main=paste(clinicType,"Group ",titleMessage),cex.main=1.2,cex.lab=1.2)
   temp <- toupper(substr(CorData_norm$SandwichName,1,nchar(CorData_norm$SandwichName) - 2))
   text(R2_norm[CorData_norm$SomaName],as.numeric(CorData_norm$cor)^2,temp,cex=0.9,pos=2)
   abline(0,1)

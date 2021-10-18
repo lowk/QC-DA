@@ -137,8 +137,8 @@ CVbreak(MySoma1Hyb,MySoma2Hyb,"INJ",combat_MySomaHyb,"combat_MySomaHyb")
 
 print("combat_MySomaHyb accuracy against external controls")
 cutMySoma1Hyb = MySoma1Hyb[which(grepl("Sample",MySoma1Hyb[,"SampleType"])),1:(which(colnames(MySoma1Hyb)=="CRYBB2.10000.28")-1)]
-exOA3 <- ExtVal(cbind(cutMySoma1Hyb,combat_MySomaHyb[1:nrow(cutMySoma1Hyb),]),"OA")
-exINJ3 <- ExtVal(cbind(cutMySoma1Hyb,combat_MySomaHyb[1:nrow(cutMySoma1Hyb),]),"INJ")
+exOA3 <- ExtVal(cbind(cutMySoma1Hyb,exp(combat_MySomaHyb[1:nrow(cutMySoma1Hyb),])),"OA")
+exINJ3 <- ExtVal(cbind(cutMySoma1Hyb,exp(combat_MySomaHyb[1:nrow(cutMySoma1Hyb),])),"INJ")
 
 VarOA3 <- VarExp("OA",cbind(cutMySoma1Hyb,combat_MySomaHyb[1:nrow(cutMySoma1Hyb),]),"MySoma1Hyb+combat")
 R2repeats(VarOA3,exOA3,"OA","MySoma1Hyb+combat")
@@ -184,12 +184,12 @@ CVbreak(MySoma1Full,MySoma2Full,"INJ",combat_MySomaFull,"combat_MySomaFul")
 
 print("combat_MySomaFul accuracy against external controls")
 cutMySoma1Full = MySoma1Full[which(grepl("Sample",MySoma1Full[,"SampleType"])),1:(which(colnames(MySoma1Full)=="CRYBB2.10000.28")-1)]
-exOA5 <- ExtVal(cbind(cutMySoma1Full,combat_MySomaFull[1:nrow(cutMySoma1Hyb),]),"OA")
-exINJ5 <- ExtVal(cbind(cutMySoma1Full,combat_MySomaFull[1:nrow(cutMySoma1Hyb),]),"INJ")
+exOA5 <- ExtVal(cbind(cutMySoma1Full,exp(combat_MySomaFull[1:nrow(cutMySoma1Hyb),])),"OA")
+exINJ5 <- ExtVal(cbind(cutMySoma1Full,exp(combat_MySomaFull[1:nrow(cutMySoma1Hyb),])),"INJ")
 
-VarOA5 <- VarExp("OA",cbind(cutMySoma1Full,combat_MySomaFull[1:nrow(cutMySoma1Hyb),]),"MySoma1Full+combat")
+VarOA5 <- VarExp("OA",cbind(cutMySoma1Full,exp(combat_MySomaFull[1:nrow(cutMySoma1Hyb),])),"MySoma1Full+combat")
 R2repeats(VarOA5,exOA5,"OA","MySoma1Full+combat")
-VarINJ5 <- VarExp("INJ",cbind(cutMySoma1Full,combat_MySomaFull[1:nrow(cutMySoma1Hyb),]),"MySoma1Full+combat")
+VarINJ5 <- VarExp("INJ",cbind(cutMySoma1Full,exp(combat_MySomaFull[1:nrow(cutMySoma1Hyb),])),"MySoma1Full+combat")
 R2repeats(VarINJ5,exINJ5,"INJ","MySoma1Full+combat")
 
 # Darryl norm (i.e. SomaLogic’s new normalization). Combine somalogic normliased two tranches data for batch test.
@@ -231,8 +231,8 @@ CVbreak(Soma1,Soma2,"INJ",combat_Soma,"combat_Soma")
 
 print("combat_Soma accuracy against external controls")
 cutCombat_Soma = Soma1[which(grepl("Sample",Soma1[,"SampleType"])),1:(which(colnames(Soma1)=="CRYBB2.10000.28")-1)]
-exOA7 <- ExtVal(cbind(cutCombat_Soma,combat_Soma[1:nrow(cutCombat_Soma),]),"OA")
-exINJ7 <- ExtVal(cbind(cutCombat_Soma,combat_Soma[1:nrow(cutCombat_Soma),]),"INJ")
+exOA7 <- ExtVal(cbind(cutCombat_Soma,exp(combat_Soma[1:nrow(cutCombat_Soma),])),"OA")
+exINJ7 <- ExtVal(cbind(cutCombat_Soma,exp(combat_Soma[1:nrow(cutCombat_Soma),])),"INJ")
 
 VarOA7 <- VarExp("OA",cbind(cutCombat_Soma,combat_Soma[1:nrow(cutCombat_Soma),]),"Soma1+combat")
 R2repeats(VarOA7,exOA7,"OA","Soma1+combat")
@@ -341,7 +341,7 @@ ggplot(data = CorDatP) + geom_line(aes(x=CorC,y=as.numeric(CorDatY),group=CorDat
   theme(axis.text.x = element_text(size=6, angle=20),legend.title =element_text(size = 6), legend.text = element_text(size = 6),plot.title=element_text(size = 10,face="bold",hjust=0.5),
         axis.title.y =element_text(size=8),axis.title.x =element_text(size=8)) 
 
-# ggplot(data = CorDatP) + geom_line(aes(x=CorC,y=as.numeric(CorDatY),group=CorDatX,col=CorDatX)) + ggtitle("Correlation between RFUs and immunoassay for Injury patients") +
-#   xlab("Normalisations") + ylab("Correlation coefficient") +labs(color = "SomaName") + scale_x_discrete(breaks=seq(1:7),labels=xlabels) +
-#   theme(axis.text.x = element_text(size=6, angle=20),legend.title =element_text(size = 6), legend.text = element_text(size = 6),plot.title=element_text(size = 10,face="bold",hjust=0.5),
-#         axis.title.y =element_text(size=8),axis.title.x =element_text(size=8))
+ggplot(data = CorDatP) + geom_line(aes(x=CorC,y=as.numeric(CorDatY),group=CorDatX,col=CorDatX)) + ggtitle("Correlation between RFUs and immunoassay for Injury patients") +
+  xlab("Normalisations") + ylab("Correlation coefficient") +labs(color = "SomaName") + scale_x_discrete(breaks=seq(1:7),labels=xlabels) +
+  theme(axis.text.x = element_text(size=6, angle=20),legend.title =element_text(size = 6), legend.text = element_text(size = 6),plot.title=element_text(size = 10,face="bold",hjust=0.5),
+        axis.title.y =element_text(size=8),axis.title.x =element_text(size=8))
