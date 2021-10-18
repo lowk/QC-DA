@@ -7,11 +7,12 @@
 #   BioMetaDone <- BioMeta[HMsam,]
 #   return(list(MySomaDone,BioMetaDone))
 # }
-filterHM <- function(MySoma){
-  HMpro <- which(!grepl("HybControlElution|Non",colnames(MySoma)))
-  HMsam <- which(grepl("Sample",MySoma[,"SampleType"]))
-  MySomaDone <- MySoma[HMsam,HMpro]
-  return(MySomaDone)
+### filter input RFU whole frame, output frame with only human protein and human samples.
+filterHM <- function(MyRFU){
+  HMpro <- which(!grepl("HybControlElution|Non",colnames(MyRFU)))
+  HMsam <- which(grepl("Sample",MyRFU[,"SampleType"]))
+  MyRFUDone <- MyRFU[HMsam,HMpro]
+  return(MyRFUDone)
 }
 
 ### get plate batch
@@ -410,52 +411,52 @@ MIDNORMsamp = function(RawM){
 }
 
 
-### function "CompTWO": conveniently compare any two Somalogic RFU matrix with the same dimensions. SomaM and MySoma are any two RUFs, with same dimensions. 
+### function "CompTWO": conveniently compare any two Somalogic RFU matrix with the same dimensions. RFU1 and RFU2 are any two RUFs, with same dimensions. 
 ### output non matching rownames and colnames, and also use corThresh to set below which correlation coefficient, the protein names will be displayed. 
 
-CompTWO <- function(SomaM,MySoma,corThresh){
+CompTWO <- function(RFU1,RFU2,corThresh){
   
-  DatStartId1 <- which(colnames(SomaM)=="CRYBB2.10000.28")
-  DatStartId2 <- which(colnames(MySoma)=="CRYBB2.10000.28")
+  DatStartId1 <- which(colnames(RFU1)=="CRYBB2.10000.28")
+  DatStartId2 <- which(colnames(RFU2)=="CRYBB2.10000.28")
   
-  rowOrderName = rownames(SomaM)
-  rowOrder = vector(mode="numeric",length=nrow(SomaM))
+  rowOrderName = rownames(RFU1)
+  rowOrder = vector(mode="numeric",length=nrow(RFU1))
   rowKK=1
   notMatchRow=vector() ### rowKK, notMatchRow: extend code compatibility, when there are none matching records
-  for (j in 1:nrow(SomaM)){
-    if(!any(rownames(MySoma)==rowOrderName[j])){notMatchRow[rowKK]=j
+  for (j in 1:nrow(RFU1)){
+    if(!any(rownames(RFU2)==rowOrderName[j])){notMatchRow[rowKK]=j
     rowKK=rowKK+1}
-    else{rowOrder[j] = which(rownames(MySoma) %in% rowOrderName[j])}
+    else{rowOrder[j] = which(rownames(RFU2) %in% rowOrderName[j])}
   }
   print(paste("row name not match: ",rowOrderName[notMatchRow]))
   
-  colOrderName = colnames(SomaM)[DatStartId1:ncol(SomaM)]
+  colOrderName = colnames(RFU1)[DatStartId1:ncol(RFU1)]
   colOrder = vector(mode="numeric",length=length(colOrderName))
   colKK=1
   notMatchCol=vector()
   for (k in 1:length(colOrder)){
-    if(!any(colnames(MySoma)[DatStartId2:ncol(MySoma)]==colOrderName[k])){notMatchCol[colKK] = k
+    if(!any(colnames(RFU2)[DatStartId2:ncol(RFU2)]==colOrderName[k])){notMatchCol[colKK] = k
     colKK=colKK+1}
-    else{colOrder[k] = which(colnames(MySoma)[DatStartId2:ncol(MySoma)] %in% colOrderName[k])}
+    else{colOrder[k] = which(colnames(RFU2)[DatStartId2:ncol(RFU2)] %in% colOrderName[k])}
   }
   print(paste("column name not match in Soma: ",colOrderName[notMatchCol]))
   
-  # MySomaDone = MySoma[rowOrder,c(1:DatStartId2-1,colOrder+DatStartId2-1)]
+  # RFU2Done = RFU2[rowOrder,c(1:DatStartId2-1,colOrder+DatStartId2-1)]
   ### check row names colnames matching between two matrices
-  # all(rownames(MySomaDone)==rownames(SomaM))
-  # all(colnames(MySomaDone)[DatStartId2:ncol(MySomaDone)]==colnames(SomaM)[DatStartId1:ncol(SomaM)])
+  # all(rownames(RFU2Done)==rownames(RFU1))
+  # all(colnames(RFU2Done)[DatStartId2:ncol(RFU2Done)]==colnames(RFU1)[DatStartId1:ncol(RFU1)])
   
   corShip = vector(mode = "numeric", length=length(colOrder)) ### correlation between my calculation and Adat
   for(dd in 1:length(corShip)){
     if(!(dd %in% notMatchCol)){
-      if(length(notMatchRow)!=0){corShip[dd] = cor(MySoma[rowOrder,colOrder[dd]+DatStartId2-1],SomaM[!notMatchRow,dd+DatStartId1-1])}
-      else{corShip[dd] = cor(MySoma[rowOrder,colOrder[dd]+DatStartId2-1],SomaM[,dd+DatStartId1-1])}
+      if(length(notMatchRow)!=0){corShip[dd] = cor(RFU2[rowOrder,colOrder[dd]+DatStartId2-1],RFU1[!notMatchRow,dd+DatStartId1-1])}
+      else{corShip[dd] = cor(RFU2[rowOrder,colOrder[dd]+DatStartId2-1],RFU1[,dd+DatStartId1-1])}
     }
     else{corShip[dd]=NA}
   }
   
   plot(corShip[!is.na(corShip)],ylab="correlation coefficient")
-  print(paste("correlation coefficient between minimum value of ", min(corShip[!is.na(corShip)])," to user selected threshold of",corThresh, " :",colnames(SomaM)[DatStartId1:ncol(SomaM)][which(corShip<corThresh)]))
+  print(paste("correlation coefficient between minimum value of ", min(corShip[!is.na(corShip)])," to user selected threshold of",corThresh, " :",colnames(RFU1)[DatStartId1:ncol(RFU1)][which(corShip<corThresh)]))
   return()
 }
 
@@ -630,13 +631,16 @@ KNNtest <- function(exprDat_norm,BioMeta,myRound,kBatch){
   return(BatchEffect)
 }
 
-### initialise required metadata for normalisation methods
-initQCnorm <- function(inputfile1,inputfile2){
+### initialize  variables for normalization. 
+### inputs are adat files 
+### output is a matrix of meata table for required normalization. meta table includes "Protein Name", "UniPro ID", 'EntrezGeneID',"EntrezGeneSymbol","TargetFullName","Target"
+
+initQCnorm <- function(RawDatFile,ReferenceDatFile){
   
-  RawM <- read.adat(inputfile1) 
+  RawM <- read.adat(RawDatFile) 
   ### read in Col^MetaTable
   
-  con1 = file(inputfile2, "r")
+  con1 = file(ReferenceDatFile, "r")
   
   while(TRUE) {
     sline = readLines(con1, n=1)
@@ -683,7 +687,7 @@ initQCnorm <- function(inputfile1,inputfile2){
   return(ColTable)
 }
 
-### combine tranches data and sva::combat function to remove batches
+### combine tranches data and sva::combat function to remove batches. output??? 
 MyCombat <- function(RFU1,RFU2,noCombat){
   
   Done1 <- filterHM(RFU1)
@@ -851,14 +855,39 @@ getpars <- function(sandwich_master,exprDatM,par1,par2) {
   temp1 <- sandwich_master[as.character(metadata_reord$`STEpUP Participant Identification Number (PIN)`),]
   
   if (sum(!(is.na(temp1[,par1] + exprDat_norm[,par2]))) == 0) return(c(par1,par2,NA,NA,0))
-  md <- cor.test(temp1[,par1],exprDat_norm[,par2])
+  md <- cor.test(log(temp1[,par1]),exprDat_norm[,par2])
   c(par1,par2,unlist(md[c("estimate","p.value")]),2+md$parameter)
   
 }
 
 getpars2 <- function(temp1,par1,par2,keep) {
   if (sum(!(is.na(temp1[keep,par1] + exprDat_norm[keep,par2]))) == 0) return(c(par1,par2,NA,NA,0))
-  md <- cor.test(temp1[keep,par1],exprDat_norm[keep,par2])
+  md <- cor.test(log(temp1[keep,par1]),exprDat_norm[keep,par2])
   c(par1,par2,unlist(md[c("estimate","p.value")]),2+md$parameter)
 }
 
+
+### VarExp: input clinical disease group, RFU whole data frame. output matrix of R2, variance explained by sample replicates. 
+VarExp <- function(clinicType,exprDat_normM,titleMessage){
+  calib_normM <- data.frame(exprDat_normM[grep("POOL",exprDat_normM$SampleId),!grepl("HybControlElution|Non",colnames(exprDat_normM))]) ### calibrators frame
+  calib_norm <- calib_normM[,which(colnames(calib_normM)=="CRYBB2.10000.28"):ncol(calib_normM)] ### calibrator RFUs only
+  calibIDs <- calib_normM$SampleId 
+  exprDat_norm <- exprDat_normM[grep("Sample",exprDat_normM$SampleType),!grepl("HybControlElution|Non",colnames(exprDat_normM))]
+  exprDat_norm <- exprDat_norm[,which(colnames(exprDat_norm)=="CRYBB2.10000.28"):ncol(exprDat_norm)]
+  temp <- apply(calib_norm[grep(clinicType,calibIDs),],2,var)/apply(exprDat_norm,2,var)
+  temp[temp > 1] <- 1
+  R2_norm <- (1 - temp)^2
+  plot(quantile(R2_norm,1 - seq(0,1,length.out=100)),seq(0,1,length.out=100),xlim=c(1,0),type="l",xlab=paste("R2",clinicType),ylab="Cumulative total",main=paste(titleMessage))
+  abline(h=0.8,lty=2)
+  abline(v=quantile(R2_norm,1 - 0.8),lty=2)
+  return(R2_norm)
+}
+
+### using variation explained by calibrators to predict correlation coefficients with external immunoessay 
+R2repeats = function(R2_norm,CorData_norm,clinicType){
+  plot(R2_norm[CorData_norm$SomaName],as.numeric(CorData_norm$cor)^2,xlab="Predicted R2",ylab="Actual R2",xlim=c(0,1.05),ylim=c(0,1.05),main=paste(clinicType,"Group"),cex.main=2,cex.lab=1.5)
+  temp <- toupper(substr(CorData_norm$SandwichName,1,nchar(CorData_norm$SandwichName) - 2))
+  text(R2_norm[CorData_norm$SomaName],as.numeric(CorData_norm$cor)^2,temp,cex=0.9,pos=2)
+  abline(0,1)
+  return()
+}
