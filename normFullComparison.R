@@ -81,8 +81,13 @@ PlotPCA(CombinedRaw,batchMeta_Raw,3,2,"PCA on combined raw data")
 PlotUmap(CombinedRaw,batchMeta_Raw,1,"UMAP on combined raw data")
 PlotUmap(CombinedRaw,batchMeta_Raw,2,"UMAP on combined raw data")
 
-CVbreak(RawM1,RawM2,"OA",CombinedRaw,"combined raw data")
-CVbreak(RawM1,RawM2,"INJ",CombinedRaw,"combined raw data")
+CVlist <- CVbreak(RawM1,RawM2,"OA",CombinedRaw,"combined raw data")
+accrossPlateCV <- CVlist[[1]]
+withinPlateCV <- CVlist[[2]]
+accrossTrancheCV <- CVlist[[3]]
+withinTrancheCV <- CVlist[[4]]
+
+CVlist <- CVbreak(RawM1,RawM2,"INJ",CombinedRaw,"combined raw data")
 
 print("RawM1 accuracy against external controls")
 exOA1 <- ExtVal(RawM1,"OA")
@@ -151,7 +156,7 @@ PlotPCA(MyFullOnly,batchMeta_MyFullOnly,3,2,"PCA on combined my full norm")
 PlotUmap(MyFullOnly,batchMeta_MyFullOnly,1,"UMAP on combined my full norm")
 PlotUmap(MyFullOnly,batchMeta_MyFullOnly,2,"UMAP on combined my full norm")
 
-CVbreak(MySoma1Full,MySoma2Full,"OA",log(MyFullOnly),"combined my full norm")
+CVList <- CVbreak(MySoma1Full,MySoma2Full,"OA",MyFullOnly,"combined my full norm")
 CVbreak(MySoma1Full,MySoma2Full,"INJ",log(MyFullOnly),"combined my full norm")
 
 print("MySoma1Full accuracy against external controls")
@@ -198,7 +203,7 @@ PlotPCA(SomaOnly,batchMeta_SomaOnly,3,2,"PCA on combined Soma Only")
 PlotUmap(SomaOnly,batchMeta_SomaOnly,1,"UMAP on combined Soma Only")
 PlotUmap(SomaOnly,batchMeta_SomaOnly,2,"UMAP on combined Soma Only")
 
-CVbreak(Soma1,Soma2,"OA",SomaOnly,"combined Soma Only")
+CVList <- CVbreak(Soma1,Soma2,"OA",SomaOnly,"combined Soma Only")
 CVbreak(Soma1,Soma2,"INJ",SomaOnly,"combined Soma Only")
 
 print("SomaOnly accuracy against external controls")

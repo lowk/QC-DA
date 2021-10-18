@@ -737,13 +737,19 @@ PlotUmap <- function(exprDat,BatchMeta,confounderC,titleMessage){
     geom_point() + labs(title=titleMessage,color=colnames(BatchMeta)[confounderC])
 }
 
+### CV break: %CV for within/cross plates, within/cross tranches.
+### input: RFUs of two tranches before combat, clinic type, combat corrected RFUs, titleMessage for plot
+### output: temp1--cross plate CV, temp2-- within plate CV, tempAct -- corss tranche CV, tempAct2 -- within tranche CV.
 CVbreak <- function(RFU1,RFU2,clinicType,exprDat,titleMessage){
   par(mfrow=c(1,2))
   
   Done1 <- filterHM(RFU1)
   Done2 <- filterHM(RFU2)
   
-  DoneAll <- rbind(Done1[,c(1:13,which(colnames(Done1) == "CRYBB2.10000.28"):ncol(Done1))],Done2[,c(1:13,which(colnames(Done2) == "CRYBB2.10000.28"):ncol(Done2))])
+  DatStartID1 = which(colnames(Done1) == "CRYBB2.10000.28")
+  DatStartID2 = which(colnames(Done2) == "CRYBB2.10000.28")
+  
+  DoneAll <- rbind(Done1[,c(1:13,DatStartID1:ncol(Done1))],Done2[,c(1:13,DatStartID2:ncol(Done2))])
   exprDat_Mr <- data.frame(cbind(DoneAll[,c(1:13)],exprDat)) 
   calib_normM <- exprDat_Mr[grep(paste(clinicType,"POOL"),exprDat_Mr$SampleId),]
   calib_norm <- as.matrix(calib_normM[,-c(1:(which(colnames(calib_normM)=="CRYBB2.10000.28")-1))])
@@ -767,7 +773,7 @@ CVbreak <- function(RFU1,RFU2,clinicType,exprDat,titleMessage){
   lines(c(quantile(temp1,0.8),quantile(temp1,0.8))*100,c(0.8,0),lty=2)
   lines(c(0,quantile(temp2,0.8))*100,c(0.8,0.8),lty=2,col="red")
   lines(c(quantile(temp2,0.8),quantile(temp2,0.8))*100,c(0.8,0),lty=2,col="red")
-  legend(8,0.4,c("Across Plates","Within Plates"),lwd=2,col=c("blue","red"),xpd=T,cex=0.75)
+  legend(8,0.4,c("Across Plates","Within Plates"),lwd=2,col=c("black","red"),xpd=T,cex=0.75)
   
   ### across  tranche
   tempAct = matrix(0,nrow=5,ncol=ncol(calib_norm))
@@ -797,7 +803,7 @@ CVbreak <- function(RFU1,RFU2,clinicType,exprDat,titleMessage){
   
   title(titleMessage)
   
-  return()
+  return(list(temp1,temp2,tempAct,tempAct2))
 }
 
 
@@ -884,8 +890,8 @@ VarExp <- function(clinicType,exprDat_normM,titleMessage){
 }
 
 ### using variation explained by calibrators to predict correlation coefficients with external immunoessay 
-R2repeats = function(R2_norm,CorData_norm,clinicType){
-  plot(R2_norm[CorData_norm$SomaName],as.numeric(CorData_norm$cor)^2,xlab="Predicted R2",ylab="Actual R2",xlim=c(0,1.05),ylim=c(0,1.05),main=paste(clinicType,"Group"),cex.main=2,cex.lab=1.5)
+R2repeats = function(R2_norm,CorData_norm,clinicType,titleMessage){
+  plot(R2_norm[CorData_norm$SomaName],as.numeric(CorData_norm$cor)^2,xlab="Predicted R2",ylab="Actual R2",xlim=c(0,1.05),ylim=c(0,1.05),main=paste(clinicType,"Group ",titleMessage),cex.main=2,cex.lab=1.5)
   temp <- toupper(substr(CorData_norm$SandwichName,1,nchar(CorData_norm$SandwichName) - 2))
   text(R2_norm[CorData_norm$SomaName],as.numeric(CorData_norm$cor)^2,temp,cex=0.9,pos=2)
   abline(0,1)
