@@ -127,6 +127,7 @@ CVbreak <- function(calib_norm,clinicType){
 #Check 3: PCA
 PCAglob <- function(BioMeta,exprDat_norm){
   pc_norm <- prcomp(as.matrix(exprDat_norm),scale = TRUE)
+  topPC <- which(get_eigenvalue(pc_norm)$cumulative.variance.percent>80)[1] ### corresponding cumulative variance 80% explained by topPC
   #myTSNE <-Rtsne(temp, dims = 2, perplexity=30, verbose=TRUE, max_iter = 500)
   
   # for (plotID in 1:ncol(MetaRaw)){
@@ -140,11 +141,11 @@ PCAglob <- function(BioMeta,exprDat_norm){
   # }
   # 
   
-  PlotDat = data.frame(cbind(pc_norm$x[,1:10],BioMeta))
+  PlotDat = data.frame(cbind(pc_norm$x[,1:topPC],BioMeta))
   
   for (confounderC in 1:6){
      
-    ggpairs(PlotDat, columns=1:10, aes(color= as.factor(PlotDat[,confounderC+10])),
+    ggpairs(PlotDat, columns=1:topPC, aes(color= as.factor(PlotDat[,confounderC+topPC])),
             diag=list(continuous=wrap("densityDiag",alpha=0.4)),
             lower=list(continuous = wrap("points",alpha=0.9,size=0.1)),
             upper = list(continuous = "blank"),
@@ -154,14 +155,14 @@ PCAglob <- function(BioMeta,exprDat_norm){
     PlotDatFil = PlotDat[!is.na(PlotDat$Corhort),]
     PlotDatFil = PlotDat[!is.na(PlotDat$bloodStain)&PlotDat$bloodStain!="Not known"&PlotDat$bloodStain!="No"&PlotDat$bloodStain!="Mild",]
     
-    ggpairs(PlotDatFil, columns=1:10, aes(color= as.factor(PlotDatFil[,confounderC+10])),
+    ggpairs(PlotDatFil, columns=1:topPC, aes(color= as.factor(PlotDatFil[,confounderC+topPC])),
             diag=list(continuous=wrap("densityDiag",alpha=0.4)),
             lower=list(continuous = wrap("points",alpha=0.9,size=0.1)),
             upper = list(continuous = "blank"),
             legend = c(1,1)) + labs(fill = colnames(BioMeta)[confounderC])
     
     PlotDatFil = PlotDat[!is.na(PlotDat$sampleAge),]
-    ggpairs(PlotDatFil, columns=1:10, aes(color= as.factor(floor(as.numeric(PlotDatFil[,confounderC+10])/365))),
+    ggpairs(PlotDatFil, columns=1:topPC, aes(color= as.factor(floor(as.numeric(PlotDatFil[,confounderC+topPC])/365))),
             diag=list(continuous=wrap("densityDiag",alpha=0.4)),
             lower=list(continuous = wrap("points",alpha=0.9,size=0.1)),
             upper = list(continuous = "blank"),
@@ -188,7 +189,7 @@ PCAglob <- function(BioMeta,exprDat_norm){
   ggplot(PlotDat,aes(x=PC2,y=PC8,color=as.numeric(sampleAge)/365))+geom_point(size=3) +  scale_color_gradient(breaks=seq(0,20,5),limits=c(0,20)) + labs(color="Sample Age") + theme(legend.title=element_text(size=15),legend.text=element_text(size=16),axis.title=element_text(size=13,face="bold"))
   
   
-  ### PCA outliers based on top 10 PCs
+  ### PCA outliers based on top topPC
   myPoints <- pc_norm$x[,1:10]
   centroid <- colMeans(myPoints)
   distanceToCenter = matrix(NA,ncol=1,nrow=nrow(myPoints))
