@@ -125,7 +125,7 @@ CVbreak <- function(calib_norm,clinicType){
 
 
 #Check 3: PCA
-PCAglob <- function(BioMeta,exprDat_norm){
+PCAglob <- function(BioMeta,exprDat_norm){ ###exprDat_norm: protein expression data, Biometa: confounders/batches.
   pc_norm <- prcomp(as.matrix(exprDat_norm),scale = TRUE)
   topPC <- which(get_eigenvalue(pc_norm)$cumulative.variance.percent>80)[1] ### corresponding cumulative variance 80% explained by topPC
   #myTSNE <-Rtsne(temp, dims = 2, perplexity=30, verbose=TRUE, max_iter = 500)
