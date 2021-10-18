@@ -7,6 +7,8 @@ library(umap)
 library(GGally)
 library(factoextra)
 
+# load("normList.RData")
+
 myFilePath <- "/Users/ydeng/Documents/QCstepOA/normComp/"  ### set required file directory
 inputfile1 <- paste(myFilePath,"SS-200008.ADat",sep="") ### RawM1
 inputfile2 <- paste(myFilePath,"SS-205086.adat",sep="") ###RawM2
@@ -267,7 +269,7 @@ save(RawM1,RawM2,CombinedRaw,
      batchMeta_HybOnly, batchMeta_MySomaHyb,batchMeta_MyFullOnly,
      batchMeta_MySomaFul,batchMeta_SomaOnly,batchMeta_Soma,file="normList.RData")
 
-load("normList.RData")
+
 
 ### plot external check among all normalisations
 externalCheck <- cbind(exOA1[,1:3],exOA2[,3],exOA3[,3],exOA4[,3],exOA5[,3],exOA6[,3],exOA7[,3]) ### for OA patients
