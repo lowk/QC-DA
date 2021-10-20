@@ -687,7 +687,12 @@ initQCnorm <- function(RawDatFile,ReferenceDatFile){
   return(ColTable)
 }
 
-### combine tranches data and sva::combat function to remove batches. output??? 
+### combine tranches data and sva::combat function to remove batches. 
+### input two RFU matrices, noCombat is the argument to set whether to use combat correction (YES:0; NO:1)
+### output combat_allWhole processed combined data frame, including corresponding biometa information.
+### output Only include human samples and human proteins. 
+### when noCombat is 1, the out put is the combined RFUs without combat correction.
+
 MyCombat <- function(RFU1,RFU2,noCombat){
   
   Done1 <- filterHM(RFU1)
@@ -703,14 +708,16 @@ MyCombat <- function(RFU1,RFU2,noCombat){
   colnames(BatchMeta) = c("Tranche Batch","Plate Batch")
   PlateBatch <- as.vector(PlateBatch) ### Combat argument requirement
   
-  if(noCombat==1){combat_all_batch = t(log(DoneAllDat))
-  combat_all = data.frame(log(DoneAllDat))}
+  BioMeta = cbind(DoneAll[,1:13],BatchMeta)
+  
+  if(noCombat==1){combat_all = data.frame(log(DoneAllDat))}
   else{combat_all_batch <- sva::ComBat(t(log(DoneAllDat)), PlateBatch, mod=NULL, par.prior = TRUE, prior.plots = FALSE)
   combat_all = data.frame(t(combat_all_batch))}
   
-  batchTest <- KNNtest(t(combat_all_batch),BatchMeta,2,2)
+  combat_allWhole = cbind(BioMeta,combat_all)
   
-  return(list(combat_all,batchTest,BatchMeta))
+  return(combat_allWhole)
+  
 }
 
 
@@ -728,9 +735,9 @@ PlotPCA <- function(exprDat,BatchMeta,topPC,confounderC,titleMessage){
 }
 
 PlotUmap <- function(exprDat,BatchMeta,confounderC,titleMessage){
-  myUmap = umap(t(exprDat))
-  df <- data.frame(x = myUmap$data[,"X1"],
-                   y = myUmap$data[,"X2"],
+  myUmap = umap(exprDat)
+  df <- data.frame(x = myUmap$layout[,1],
+                   y = myUmap$layout[,2],
                    WhichBatch = factor(BatchMeta[,confounderC]))
   colnames(df) = c("D1","D2",colnames(BatchMeta)[confounderC])
   ggplot(df, aes(x=D1, y=D2, color = df[,3])) +
@@ -807,22 +814,21 @@ CVbreak <- function(RFU1,RFU2,clinicType,exprDat,titleMessage){
 }
 
 
-### toTest1,toTest2 are biomarker lists from sandwich file and adat file individually
-ExtVal <- function(exprDatM,clinicType){
-  metadata_xls <- read_excel("STEpUP_QCData_Tranche1.xlsx")
-  temp1 <- data.frame(as.matrix(metadata_xls)[-1,1:17])
-  names(temp1) <- as.matrix(metadata_xls)[1,1:17]
-  metadata <- temp1
+### toTest1,toTest2 are biomarker lists from sandwich file (immunoFile) and adat file. clnicFile: extract STEPId and metching clinic meta data
+ExtVal <- function(exprDatM,clinicType,clinicFile,immunoFile){
+### extract clinic meta data such as disease group, cohort ...  
+  metadata_xls <- read_excel(clinicFile)
+  metadata <- data.frame(as.matrix(metadata_xls)[-1,1:17])
+  colnames(metadata) <- as.matrix(metadata_xls)[1,1:17]
   rownames(metadata) <- metadata$`STEpUP Sample Identification Number (SIN)`
-  stepupID <- exprDatM$SampleId[grep("STEP",exprDatM$SampleId)]
+  stepupID <- exprDatM$SampleId[grep("STEP",exprDatM$SampleId)] ### the row order is arranged according to exprDatM
   stepupID[stepupID == "STEP1409F-V1-HT1"] <- "STEP1409-F-V1-HT1" #fix an apparant typo
-  stepupID <- gsub("F-V1","V1-F",stepupID) #ID ordering seems to have changed?
-  plateID <- exprDatM$PlateId[grep("STEP",exprDatM$SampleId)]
+  stepupID <- gsub("F-V1","V1-F",stepupID) 
   exprDat_norm <- exprDatM[grep("STEP",exprDatM$SampleId),which(colnames(exprDatM)=="CRYBB2.10000.28"):ncol(exprDatM)]
   #reorder meta-data
-  metadata_reord <- metadata[stepupID,]
+  metadata_reord <- metadata[stepupID,] ### now metadata_record has the same row order as exprDat_norm
   
-  if(clinicType=="OA"){sandwich_master_xls_2 <- read_excel("Masterlist.xlsx",sheet=2)
+  if(clinicType=="OA"){sandwich_master_xls_2 <- read_excel(immunoFile,sheet=2)
   #process Ben data, averaging across replicates
   temp1 <- data.frame(sandwich_master_xls_2)
   temp2 <- (temp1[temp1$replicate == 1,-c(1:2)] + temp1[temp1$replicate == 2,-c(1:2)])/2
@@ -839,37 +845,19 @@ ExtVal <- function(exprDatM,clinicType){
   CorData_norm = data.frame(matrix(NA,nrow=length(toTest1),ncol=5))
   names(CorData_norm) <- c("SandwichName","SomaName","cor","Pvalue","N")
   
+  temp3 <- sandwich_master[as.character(metadata_reord$`STEpUP Participant Identification Number (PIN)`),] ###adjust row order as exprDat
+  
   for (compCounter in 1:length(toTest1)){
-    CorData_norm[compCounter,] <- getpars(sandwich_master,exprDatM,toTest1[compCounter],toTest2[compCounter])
+    par1 <- toTest1[compCounter]
+    par2 <- toTest2[compCounter]
+    
+    if (sum(!(is.na(temp3[,par1] + exprDat_norm[,par2]))) == 0){CorData_norm[compCounter,]=c(par1,par2,NA,NA,0)} 
+    else{CorData_normTemp <-cor.test(log(temp3[,par1]),exprDat_norm[,par2])
+    CorData_norm[compCounter,] = c(par1,par2,unlist(CorData_normTemp[c("estimate","p.value")]),2+CorData_normTemp$parameter)}
   }
+  
+  
   return(CorData_norm)
-}
-
-getpars <- function(sandwich_master,exprDatM,par1,par2) {
-  metadata_xls <- read_excel("STEpUP_QCData_Tranche1.xlsx")
-  temp1 <- data.frame(as.matrix(metadata_xls)[-1,1:17])
-  names(temp1) <- as.matrix(metadata_xls)[1,1:17]
-  metadata <- temp1
-  rownames(metadata) <- metadata$`STEpUP Sample Identification Number (SIN)`
-  stepupID <- exprDatM$SampleId[grep("STEP",exprDatM$SampleId)]
-  stepupID[stepupID == "STEP1409F-V1-HT1"] <- "STEP1409-F-V1-HT1" #fix an apparant typo
-  stepupID <- gsub("F-V1","V1-F",stepupID) #ID ordering seems to have changed?
-  plateID <- exprDatM$PlateId[grep("STEP",exprDatM$SampleId)]
-  exprDat_norm <- exprDatM[grep("STEP",exprDatM$SampleId),which(colnames(exprDatM)=="CRYBB2.10000.28"):ncol(exprDatM)]
-  #reorder meta-data
-  metadata_reord <- metadata[stepupID,]
-  temp1 <- sandwich_master[as.character(metadata_reord$`STEpUP Participant Identification Number (PIN)`),]
-  
-  if (sum(!(is.na(temp1[,par1] + exprDat_norm[,par2]))) == 0) return(c(par1,par2,NA,NA,0))
-  md <- cor.test(log(temp1[,par1]),exprDat_norm[,par2])
-  c(par1,par2,unlist(md[c("estimate","p.value")]),2+md$parameter)
-  
-}
-
-getpars2 <- function(temp1,par1,par2,keep) {
-  if (sum(!(is.na(temp1[keep,par1] + exprDat_norm[keep,par2]))) == 0) return(c(par1,par2,NA,NA,0))
-  md <- cor.test(log(temp1[keep,par1]),exprDat_norm[keep,par2])
-  c(par1,par2,unlist(md[c("estimate","p.value")]),2+md$parameter)
 }
 
 
