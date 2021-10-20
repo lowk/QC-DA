@@ -80,7 +80,7 @@ CombinedRaw = TestRaw[,which(colnames(TestRaw)=="CRYBB2.10000.28"):ncol(TestRaw)
 batchMeta_Raw = TestRaw[,c("Tranche Batch","Plate Batch")]
 # KNNtest(CombinedRaw,batchMeta_Raw,2,2)
 
-PlotPCA(CombinedRaw,batchMeta_Raw,3,1,"PCA on combined raw data") ### 15 seconds to run this line. to Luke: "pc_norm <- prcomp(as.matrix(exprDat),scale = TRUE)" need to perform for each input exprDat anyway, so I currently decide still to not put prcomp in the main body
+PlotPCA(CombinedRaw,batchMeta_Raw,3,1,"PCA on combined raw data") ### 20 seconds to run this line. to Luke: "pc_norm <- prcomp(as.matrix(exprDat),scale = TRUE)" need to perform for each input exprDat anyway, so I currently decide still to not put prcomp in the main body
 PlotPCA(CombinedRaw,batchMeta_Raw,3,2,"PCA on combined raw data") ### only compute prcomp one more time, which is not very long, but the code in the main body is much simpler. 
 PlotUmap(CombinedRaw,batchMeta_Raw,1,"UMAP on combined raw data") ### 20 seconds to run this line. have not put umap() function in the main body, cost the time to calculate umap once (not very long), but simplify the main body greatly.
 PlotUmap(CombinedRaw,batchMeta_Raw,2,"UMAP on combined raw data")
