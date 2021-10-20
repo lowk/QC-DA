@@ -622,7 +622,7 @@ KNNtest <- function(exprDat_norm,BioMeta,myRound,kBatch){
     BatchEffectM[[roundCount]] = sapply(batchTest,mean)
   }
   
-  BatchEffectMM = matrix(unlist(BatchEffectM),nrow=2,byrow=TRUE)
+  BatchEffectMM = matrix(unlist(BatchEffectM),nrow=myRound,byrow=TRUE)
   meanM = apply(BatchEffectMM,2,mean)
   sdM = apply(BatchEffectMM,2,sd)
   BatchEffect = rbind(meanM,sdM)
@@ -891,3 +891,11 @@ R2repeats = function(R2_norm,CorData_norm,clinicType,titleMessage){
   abline(0,1)
   return()
 }
+
+### after combat, extract corresponding data for a certain tranche
+extractTrancheX <- function(RFU1,CombinedRFU){
+  cutCombined = RFU1[which(grepl("Sample",RFU1[,"SampleType"])),1:(which(colnames(RFU1)=="CRYBB2.10000.28")-1)] 
+  extractedRFU <- cbind(cutCombined,exp(CombinedRFU[1:nrow(cutCombined),]))
+  return(extractedRFU)
+}
+
