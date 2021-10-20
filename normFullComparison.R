@@ -80,9 +80,9 @@ CombinedRaw = TestRaw[,which(colnames(TestRaw)=="CRYBB2.10000.28"):ncol(TestRaw)
 batchMeta_Raw = TestRaw[,c("Tranche Batch","Plate Batch")]
 # KNNtest(CombinedRaw,batchMeta_Raw,2,2)
 
-PlotPCA(CombinedRaw,batchMeta_Raw,3,1,"PCA on combined raw data") ### to Luke: "pc_norm <- prcomp(as.matrix(exprDat),scale = TRUE)" need to perform for each input exprDat anyway, so I currently decide still to not put prcomp in the main body
+PlotPCA(CombinedRaw,batchMeta_Raw,3,1,"PCA on combined raw data") ### 15 seconds to run this line. to Luke: "pc_norm <- prcomp(as.matrix(exprDat),scale = TRUE)" need to perform for each input exprDat anyway, so I currently decide still to not put prcomp in the main body
 PlotPCA(CombinedRaw,batchMeta_Raw,3,2,"PCA on combined raw data") ### only compute prcomp one more time, which is not very long, but the code in the main body is much simpler. 
-PlotUmap(CombinedRaw,batchMeta_Raw,1,"UMAP on combined raw data") ### have not put umap() function in the main body, cost the time to calculate umap once (not very long), but simplify the main body greatly.
+PlotUmap(CombinedRaw,batchMeta_Raw,1,"UMAP on combined raw data") ### 20 seconds to run this line. have not put umap() function in the main body, cost the time to calculate umap once (not very long), but simplify the main body greatly.
 PlotUmap(CombinedRaw,batchMeta_Raw,2,"UMAP on combined raw data")
 
 CVlist1 <- CVbreak(RawM1,RawM2,"OA",CombinedRaw,"combined raw data") ###CV test for OA group: accorss/within place CV, accross/within tranche CV.
@@ -129,9 +129,9 @@ VarINJ2 <- VarExp("INJ",MySoma1Hyb,"MySoma1Hyb")
 R2repeats(VarINJ2,exINJ2,"INJ","MySoma1Hyb")
 
 # 3. Hybnorm only + ComBat  ### 0 means no further combat after normalisation on individual tranche; 1 means further combat applied
-TestMyHyb <- MyCombat(MySoma1Hyb,MySoma2Hyb,0)
-combat_MySomaHyb <- TestMyHyb[,which(colnames(TestMyHyb)=="CRYBB2.10000.28"):ncol(TestMyHyb)]
-batchMeta_MySomaHyb = TestMyHyb[,c("Tranche Batch","Plate Batch")]
+TestHybCombat <- MyCombat(MySoma1Hyb,MySoma2Hyb,0)
+combat_MySomaHyb <- TestHybCombat[,which(colnames(TestHybCombat)=="CRYBB2.10000.28"):ncol(TestHybCombat)]
+batchMeta_MySomaHyb = TestHybCombat[,c("Tranche Batch","Plate Batch")]
 # KNNtest(combat_MySomaHyb,batchMeta_MySomaHyb,2,2)
 
 PlotPCA(combat_MySomaHyb,batchMeta_MySomaHyb,3,1,"PCA on combat_MySomaHyb")
@@ -184,9 +184,9 @@ VarINJ4 <- VarExp("INJ",MySoma1Full,"MySoma1Full")
 R2repeats(VarINJ4,exINJ4,"INJ","MySoma1Full")
 
 # 5. Full norm + ComBat
-TestMyFull <- MyCombat(MySoma1Full,MySoma2Full,0)
-combat_MySomaFull <- TestMyFull[,which(colnames(TestMyFull)=="CRYBB2.10000.28"):ncol(TestMyFull)] 
-batchMeta_MySomaFul = TestMyFull[,c("Tranche Batch","Plate Batch")]
+TestMyFullCombat <- MyCombat(MySoma1Full,MySoma2Full,0)
+combat_MySomaFull <- TestMyFullCombat[,which(colnames(TestMyFullCombat)=="CRYBB2.10000.28"):ncol(TestMyFullCombat)] 
+batchMeta_MySomaFul = TestMyFullCombat[,c("Tranche Batch","Plate Batch")]
 # KNNtest(combat_MySomaFull,batchMeta_MySomaFul,2,2)
 
 PlotPCA(combat_MySomaFull,batchMeta_MySomaFul,3,1,"PCA on combat_MySomaFul")
@@ -320,28 +320,11 @@ R2repeats(VarINJ7,exINJ7,"INJ","Soma1+combat")
 # Darryl norm + ComBat: combat_Soma is the expression profile by further combatted on SomaOnly.
 # note that: combined data sets and combatted data sets only include human samples and human proteins.
 
-normList = list("RawM1"=RawM1,"RawM2"=RawM2,"CombinedRaw"=CombinedRaw,
-                "MySoma1Hyb"=MySoma1Hyb,"MySoma2Hyb"=MySoma2Hyb,"CombinedHyb"=CombinedHyb,"combat_MySomaHyb"=combat_MySomaHyb,
-                "MySoma1Full"=MySoma1Full,"MySoma2Full"=MySoma2Full,"MyFullOnly"=MyFullOnly,"combat_MySomaFull"=combat_MySomaFull,
-                "Soma1"=Soma1,"Soma2"=Soma2,"SomaOnly"=SomaOnly,"combat_Soma"=combat_Soma)
+normList = list("RawM1"=RawM1,"RawM2"=RawM2,"TestRaw"=TestRaw,
+                "MySoma1Hyb"=MySoma1Hyb,"MySoma2Hyb"=MySoma2Hyb,"TestHyb"=TestHyb,"TestHybCombat"=TestHybCombat,
+                "MySoma1Full"=MySoma1Full,"MySoma2Full"=MySoma2Full,"TestMyFullOnly"=TestMyFullOnly,"TestMyFullCombat"=TestMyFullCombat,
+                "Soma1"=Soma1,"Soma2"=Soma2,"TestSomaOnly"=TestSomaOnly,"TestSomaCombat"=TestSomaCombat)
 saveRDS(normList,file="normList.rds")
-
-batchMeta = list("batchMeta_Raw"=batchMeta_Raw,
-                 "batchMeta_HybOnly"=batchMeta_HybOnly,
-                 "batchMeta_MySomaHyb"=batchMeta_MySomaHyb,
-                 "batchMeta_MyFullOnly"=batchMeta_MyFullOnly,
-                 "batchMeta_MySomaFul"=batchMeta_MySomaFul,
-                 "batchMeta_SomaOnly"=batchMeta_SomaOnly,
-                 "batchMeta_Soma"=batchMeta_Soma)
-saveRDS(batchMeta,file="batchMeta.rds")
-
-save(RawM1,RawM2,CombinedRaw,
-     MySoma1Hyb,MySoma2Hyb,CombinedHyb,combat_MySomaHyb,
-     MySoma1Full,MySoma2Full,MyFullOnly,combat_MySomaFull,
-     Soma1,Soma2,SomaOnly,combat_Soma,batchMeta_Raw,
-     batchMeta_HybOnly, batchMeta_MySomaHyb,batchMeta_MyFullOnly,
-     batchMeta_MySomaFul,batchMeta_SomaOnly,batchMeta_Soma,file="normList.RData")
-
 
 
 ### plot external check among all normalisation choices.
@@ -365,7 +348,8 @@ ggplot(data = CorDatP) + geom_line(aes(x=CorC,y=as.numeric(CorDatY),group=CorDat
         axis.title.y =element_text(size=8),axis.title.x =element_text(size=8)) 
 
 ### following is to plot external check comparison for injury group. for simplicity to define variables, "plot external check" run from the "externalCheck <- " again for injury patients. 
-# ggplot(data = CorDatP) + geom_line(aes(x=CorC,y=as.numeric(CorDatY),group=CorDatX,col=CorDatX)) + ggtitle("Correlation between RFUs and immunoassay for Injury patients") +
-#   xlab("Normalisations") + ylab("Correlation coefficient") +labs(color = "SomaName") + scale_x_discrete(breaks=seq(1:7),labels=xlabels) +
-#   theme(axis.text.x = element_text(size=6, angle=20),legend.title =element_text(size = 6), legend.text = element_text(size = 6),plot.title=element_text(size = 10,face="bold",hjust=0.5),
-#         axis.title.y =element_text(size=8),axis.title.x =element_text(size=8))
+ggplot(data = CorDatP) + geom_line(aes(x=CorC,y=as.numeric(CorDatY),group=CorDatX,col=CorDatX)) + ggtitle("Correlation between RFUs and immunoassay for Injury patients") +
+  xlab("Normalisations") + ylab("Correlation coefficient") +labs(color = "SomaName") + scale_x_discrete(breaks=seq(1:7),labels=xlabels) +
+  theme(axis.text.x = element_text(size=6, angle=20),legend.title =element_text(size = 6), legend.text = element_text(size = 6),plot.title=element_text(size = 10,face="bold",hjust=0.5),
+        axis.title.y =element_text(size=8),axis.title.x =element_text(size=8))
+
