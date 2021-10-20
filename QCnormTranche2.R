@@ -818,12 +818,16 @@ CVbreak <- function(RFU1,RFU2,clinicType,exprDat,titleMessage){
 ExtVal <- function(exprDatM,clinicType,clinicFile,immunoFile){
 ### extract clinic meta data such as disease group, cohort ...  
   metadata_xls <- read_excel(clinicFile)
-  metadata <- data.frame(as.matrix(metadata_xls)[-1,1:17])
+  temp <- data.frame(as.matrix(metadata_xls)[-1,1:17])
+  names(temp) <- as.matrix(metadata_xls)[1,1:17]
+  metadata <- temp
   colnames(metadata) <- as.matrix(metadata_xls)[1,1:17]
   rownames(metadata) <- metadata$`STEpUP Sample Identification Number (SIN)`
+  
   stepupID <- exprDatM$SampleId[grep("STEP",exprDatM$SampleId)] ### the row order is arranged according to exprDatM
   stepupID[stepupID == "STEP1409F-V1-HT1"] <- "STEP1409-F-V1-HT1" #fix an apparant typo
   stepupID <- gsub("F-V1","V1-F",stepupID) 
+  
   exprDat_norm <- exprDatM[grep("STEP",exprDatM$SampleId),which(colnames(exprDatM)=="CRYBB2.10000.28"):ncol(exprDatM)]
   #reorder meta-data
   metadata_reord <- metadata[stepupID,] ### now metadata_record has the same row order as exprDat_norm
@@ -834,7 +838,7 @@ ExtVal <- function(exprDatM,clinicType,clinicFile,immunoFile){
   temp2 <- (temp1[temp1$replicate == 1,-c(1:2)] + temp1[temp1$replicate == 2,-c(1:2)])/2
   sandwich_master <- data.frame(PIN=temp1[temp1$replicate == 1,1],temp2)}
   #process Historic data
-  else{sandwich_master_xls_2 <- read_excel("Masterlist.xlsx",sheet=3)
+  else{sandwich_master_xls_2 <- read_excel(immunoFile,sheet=3)
   sandwich_master <- data.frame(sandwich_master_xls_2)}
   
   rownames(sandwich_master) <- sandwich_master$PIN
@@ -844,15 +848,17 @@ ExtVal <- function(exprDatM,clinicType,clinicFile,immunoFile){
   
   CorData_norm = data.frame(matrix(NA,nrow=length(toTest1),ncol=5))
   names(CorData_norm) <- c("SandwichName","SomaName","cor","Pvalue","N")
-  
-  temp3 <- sandwich_master[as.character(metadata_reord$`STEpUP Participant Identification Number (PIN)`),] ###adjust row order as exprDat
+
+  temp3 <- sandwich_master[as.character(metadata_reord$`STEpUP Participant Identification Number (PIN)`),]
+  temp4 <- exprDat_norm[!is.na(temp3[,1]),]
+  temp3 = temp3[!is.na(temp3[,1]),]
   
   for (compCounter in 1:length(toTest1)){
     par1 <- toTest1[compCounter]
     par2 <- toTest2[compCounter]
     
-    if (sum(!(is.na(temp3[,par1] + exprDat_norm[,par2]))) == 0){CorData_norm[compCounter,]=c(par1,par2,NA,NA,0)} 
-    else{CorData_normTemp <-cor.test(log(temp3[,par1]),exprDat_norm[,par2])
+    if (sum(!(is.na(temp3[,par1] + temp4[,par2]))) == 0){CorData_norm[compCounter,]=c(par1,par2,NA,NA,0)} 
+    else{CorData_normTemp <-cor.test(temp3[,par1],temp4[,par2])
     CorData_norm[compCounter,] = c(par1,par2,unlist(CorData_normTemp[c("estimate","p.value")]),2+CorData_normTemp$parameter)}
   }
   
