@@ -167,6 +167,8 @@ print("combat_MySomaHyb accuracy against external controls")
 exOA3 <- ExtVal(extractTrancheX(MySoma1Hyb,combat_MySomaHyb,1),"OA",clinicFile,immunoFile)
 exINJ3 <- ExtVal(extractTrancheX(MySoma1Hyb,combat_MySomaHyb,1),"INJ",clinicFile,immunoFile)
 
+
+### extractTrancheX: self written function, conveniently retrieve processed tranches of data.
 VarOA3 <- VarExp("OA",extractTrancheX(MySoma1Hyb,combat_MySomaHyb,1),"MySoma1Hyb+combat")
 R2repeats(VarOA3,exOA3,"OA","MySoma1Hyb+combat")
 VarINJ3 <- VarExp("INJ",extractTrancheX(MySoma1Hyb,combat_MySomaHyb,1),"MySoma1Hyb+combat")
@@ -276,13 +278,12 @@ withinTrancheCV7 <- CVlist7[[4]]
 CVbreak(Soma1,Soma2,"INJ",combat_Soma,"combat_Soma")
 
 print("combat_Soma accuracy against external controls")
-cutCombat_Soma = Soma1[which(grepl("Sample",Soma1[,"SampleType"])),1:(which(colnames(Soma1)=="CRYBB2.10000.28")-1)]
-exOA7 <- ExtVal(cbind(cutCombat_Soma,exp(combat_Soma[1:nrow(cutCombat_Soma),])),"OA",clinicFile,immunoFile)
-exINJ7 <- ExtVal(cbind(cutCombat_Soma,exp(combat_Soma[1:nrow(cutCombat_Soma),])),"INJ",clinicFile,immunoFile)
+exOA7 <- ExtVal(extractTrancheX(Soma1,combat_Soma,1),"OA",clinicFile,immunoFile)
+exINJ7 <- ExtVal(extractTrancheX(Soma1,combat_Soma,1),"INJ",clinicFile,immunoFile)
 
-VarOA7 <- VarExp("OA",cbind(cutCombat_Soma,exp(combat_Soma[1:nrow(cutCombat_Soma),])),"Soma1+combat")
+VarOA7 <- VarExp("OA",extractTrancheX(Soma1,combat_Soma,1),"Soma1+combat")
 R2repeats(VarOA7,exOA7,"OA","Soma1+combat")
-VarINJ7 <- VarExp("INJ",cbind(cutCombat_Soma,exp(combat_Soma[1:nrow(cutCombat_Soma),])),"Soma1+combat")
+VarINJ7 <- VarExp("INJ",extractTrancheX(Soma1,combat_Soma,1),"Soma1+combat")
 R2repeats(VarINJ7,exINJ7,"INJ","Soma1+combat")
 
 # 8. log + “Full norm”, i.e. using tranche 1 calibrators for both tranches. Log transform on raw RFUs before normalisation
