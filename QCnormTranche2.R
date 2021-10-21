@@ -894,6 +894,8 @@ R2repeats = function(R2_norm,CorData_norm,clinicType,titleMessage){
 }
 
 ### after combat, extract corresponding data for a certain tranche
+### RFU is the original tranche data, combineRFU is the data only parts of combined RFUs, whichTranche =1 or 2. 
+### output extractedRFU is the processed RFUs corresponding to input RFU, extractedRFU inlcludes the RFU data parts together with meta data.
 extractTrancheX <- function(RFU,CombinedRFU,whichTranche){
   cutCombined = RFU[which(grepl("Sample",RFU[,"SampleType"])),1:(which(colnames(RFU)=="CRYBB2.10000.28")-1)] 
   if(whichTranche==1){extractedRFU <- cbind(cutCombined,exp(CombinedRFU[1:nrow(cutCombined),]))}
