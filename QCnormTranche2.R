@@ -740,8 +740,9 @@ PlotUmap <- function(exprDat,BatchMeta,confounderC,titleMessage){
                    y = myUmap$layout[,2],
                    WhichBatch = factor(BatchMeta[,confounderC]))
   colnames(df) = c("D1","D2",colnames(BatchMeta)[confounderC])
-  ggplot(df, aes(x=D1, y=D2, color = df[,3])) +
+  gp <- ggplot(df, aes(x=D1, y=D2, color = df[,3])) +
     geom_point() + labs(title=titleMessage,color=colnames(BatchMeta)[confounderC])
+  return(gp)
 }
 
 ### CV break: %CV for within/cross plates, within/cross tranches.
@@ -893,9 +894,10 @@ R2repeats = function(R2_norm,CorData_norm,clinicType,titleMessage){
 }
 
 ### after combat, extract corresponding data for a certain tranche
-extractTrancheX <- function(RFU1,CombinedRFU){
-  cutCombined = RFU1[which(grepl("Sample",RFU1[,"SampleType"])),1:(which(colnames(RFU1)=="CRYBB2.10000.28")-1)] 
-  extractedRFU <- cbind(cutCombined,exp(CombinedRFU[1:nrow(cutCombined),]))
+extractTrancheX <- function(RFU,CombinedRFU,whichTranche){
+  cutCombined = RFU[which(grepl("Sample",RFU[,"SampleType"])),1:(which(colnames(RFU)=="CRYBB2.10000.28")-1)] 
+  if(whichTranche==1){extractedRFU <- cbind(cutCombined,exp(CombinedRFU[1:nrow(cutCombined),]))}
+  else{extractedRFU <- cbind(cutCombined,exp(CombinedRFU[(nrow(CombinedRFU)-nrow(cutCombined)+1):nrow(CombinedRFU),]))}
   return(extractedRFU)
 }
 

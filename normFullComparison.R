@@ -33,7 +33,7 @@ library(factoextra)
 # TestSomaOnly = normList$TestSomaOnly
 # TestSomaCombat = normList$TestSomaCombat
 
-### source document required for running thi script.
+### source document required for running this script.
 myFilePath <- "/Users/ydeng/Documents/QCstepOA/normComp/"  ### set required file directory
 inputfile1 <- paste(myFilePath,"SS-200008.ADat",sep="") ### RawM1: Raw RFUs of tranche1
 inputfile2 <- paste(myFilePath,"SS-205086.adat",sep="") ###RawM2: Raw RFUs of tranche2 
@@ -97,10 +97,10 @@ CombinedRaw = TestRaw[,which(colnames(TestRaw)=="CRYBB2.10000.28"):ncol(TestRaw)
 batchMeta_Raw = TestRaw[,c("Tranche Batch","Plate Batch")]
 # KNN1 <- KNNtest(CombinedRaw,batchMeta_Raw,3,2) ### 3 rounds, 4 mins. increasing rounds cost exponetial time but not too much change as 2. So 2 rounds is enough.
 
-PlotPCA(CombinedRaw,batchMeta_Raw,3,1,"PCA on combined raw data") ### 20 seconds to run this line. "prcomp" need to perform for each input exprDat, so I currently decide still to not put prcomp in the main body
-PlotPCA(CombinedRaw,batchMeta_Raw,3,2,"PCA on combined raw data") ### compute prcomp one more time, which is not very long, but the code in the main body is much simpler. 
-PlotUmap(CombinedRaw,batchMeta_Raw,1,"UMAP on combined raw data") ### 20 seconds to run this line. have not put umap() function in the main body, cost the time to calculate umap once more (not very long), but simplify the main body greatly.
-PlotUmap(CombinedRaw,batchMeta_Raw,2,"UMAP on combined raw data")
+gp1<- PlotPCA(CombinedRaw,batchMeta_Raw,3,1,"PCA on combined raw data") ### 20 seconds to run this line. "prcomp" need to perform for each input exprDat, so I currently decide still to not put prcomp in the main body
+gp2 <- PlotPCA(CombinedRaw,batchMeta_Raw,3,2,"PCA on combined raw data") ### compute prcomp one more time, which is not very long, but the code in the main body is much simpler. 
+gp3 <- PlotUmap(CombinedRaw,batchMeta_Raw,1,"UMAP on combined raw data") ### 20 seconds to run this line. have not put umap() function in the main body, cost the time to calculate umap once more (not very long), but simplify the main body greatly.
+gp4 <- PlotUmap(CombinedRaw,batchMeta_Raw,2,"UMAP on combined raw data")
 
 CVlist1 <- CVbreak(RawM1,RawM2,"OA",CombinedRaw,"combined raw data") ###CV test for OA group: accorss/within place CV, accross/within tranche CV.
 accrossPlateCV1 <- CVlist1[[1]] 
@@ -124,10 +124,10 @@ CombinedHyb = TestHyb[,which(colnames(TestHyb)=="CRYBB2.10000.28"):ncol(TestHyb)
 batchMeta_HybOnly = TestHyb[,c("Tranche Batch","Plate Batch")]
 # KNN2 <- KNNtest(CombinedHyb,batchMeta_HybOnly,3,2)
 
-PlotPCA(CombinedHyb,batchMeta_HybOnly,3,1,"PCA on combined hyb only data")
-PlotPCA(CombinedHyb,batchMeta_HybOnly,3,2,"PCA on combined hyb only data")
-PlotUmap(CombinedHyb,batchMeta_HybOnly,1,"UMAP on combined hyb only data")
-PlotUmap(CombinedHyb,batchMeta_HybOnly,2,"UMAP on combined hyb only data")
+gp5 <- PlotPCA(CombinedHyb,batchMeta_HybOnly,3,1,"PCA on combined hyb only data")
+gp6 <- PlotPCA(CombinedHyb,batchMeta_HybOnly,3,2,"PCA on combined hyb only data")
+gp7 <- PlotUmap(CombinedHyb,batchMeta_HybOnly,1,"UMAP on combined hyb only data")
+gp8 <- PlotUmap(CombinedHyb,batchMeta_HybOnly,2,"UMAP on combined hyb only data")
 
 CVlist2 <-CVbreak(MySoma1Hyb,MySoma2Hyb,"OA",CombinedHyb,"combined hyb only data")
 accrossPlateCV2 <- CVlist2[[1]]
@@ -151,10 +151,10 @@ combat_MySomaHyb <- TestHybCombat[,which(colnames(TestHybCombat)=="CRYBB2.10000.
 batchMeta_MySomaHyb = TestHybCombat[,c("Tranche Batch","Plate Batch")]
 # KNN3 <- KNNtest(combat_MySomaHyb,batchMeta_MySomaHyb,3,2)
 
-PlotPCA(combat_MySomaHyb,batchMeta_MySomaHyb,3,1,"PCA on combat_MySomaHyb")
-PlotPCA(combat_MySomaHyb,batchMeta_MySomaHyb,3,2,"PCA on combat_MySomaHyb")
-PlotUmap(combat_MySomaHyb,batchMeta_MySomaHyb,1,"UMAP on combat_MySomaHyb")
-PlotUmap(combat_MySomaHyb,batchMeta_MySomaHyb,2,"UMAP on combat_MySomaHyb")
+gp9 <- PlotPCA(combat_MySomaHyb,batchMeta_MySomaHyb,3,1,"PCA on combat_MySomaHyb")
+gp10 <- PlotPCA(combat_MySomaHyb,batchMeta_MySomaHyb,3,2,"PCA on combat_MySomaHyb")
+gp11 <- PlotUmap(combat_MySomaHyb,batchMeta_MySomaHyb,1,"UMAP on combat_MySomaHyb")
+gp12 <- PlotUmap(combat_MySomaHyb,batchMeta_MySomaHyb,2,"UMAP on combat_MySomaHyb")
 
 CVlist3 <- CVbreak(MySoma1Hyb,MySoma2Hyb,"OA",combat_MySomaHyb,"combat_MySomaHyb")
 accrossPlateCV3 <- CVlist3[[1]] 
@@ -164,14 +164,15 @@ withinTrancheCV3 <- CVlist3[[4]]
 # CVlist3 <- CVbreak(MySoma1Hyb,MySoma2Hyb,"INJ",combat_MySomaHyb,"combat_MySomaHyb")
 
 print("combat_MySomaHyb accuracy against external controls")
-cutMySoma1Hyb = MySoma1Hyb[which(grepl("Sample",MySoma1Hyb[,"SampleType"])),1:(which(colnames(MySoma1Hyb)=="CRYBB2.10000.28")-1)]
-exOA3 <- ExtVal(cbind(cutMySoma1Hyb,exp(combat_MySomaHyb[1:nrow(cutMySoma1Hyb),])),"OA",clinicFile,immunoFile)
-exINJ3 <- ExtVal(cbind(cutMySoma1Hyb,exp(combat_MySomaHyb[1:nrow(cutMySoma1Hyb),])),"INJ",clinicFile,immunoFile)
+exOA3 <- ExtVal(extractTrancheX(MySoma1Hyb,combat_MySomaHyb,1),"OA",clinicFile,immunoFile)
+exINJ3 <- ExtVal(extractTrancheX(MySoma1Hyb,combat_MySomaHyb,1),"INJ",clinicFile,immunoFile)
 
-VarOA3 <- VarExp("OA",cbind(cutMySoma1Hyb,exp(combat_MySomaHyb[1:nrow(cutMySoma1Hyb),])),"MySoma1Hyb+combat")
+VarOA3 <- VarExp("OA",extractTrancheX(MySoma1Hyb,combat_MySomaHyb,1),"MySoma1Hyb+combat")
 R2repeats(VarOA3,exOA3,"OA","MySoma1Hyb+combat")
-VarINJ3 <- VarExp("INJ",cbind(cutMySoma1Hyb,exp(combat_MySomaHyb[1:nrow(cutMySoma1Hyb),])),"MySoma1Hyb+combat")
+VarINJ3 <- VarExp("INJ",extractTrancheX(MySoma1Hyb,combat_MySomaHyb,1),"MySoma1Hyb+combat")
 R2repeats(VarINJ3,exINJ3,"INJ","MySoma1Hyb+combat")
+# VarOA3 <- VarExp("OA",extractTrancheX(MySoma2Hyb,combat_MySomaHyb,2),"MySoma2Hyb+combat")
+# VarINJ3 <- VarExp("INJ",extractTrancheX(MySoma2Hyb,combat_MySomaHyb,2),"MySoma2Hyb+combat")
 
 # “Full norm”, i.e. using tranche 1 calibrators for both tranches, then combine full normed two tranches for batch test
 TestMyFullOnly <- MyCombat(MySoma1Full,MySoma2Full,1)
@@ -179,10 +180,10 @@ MyFullOnly <- TestMyFullOnly[,which(colnames(TestMyFullOnly)=="CRYBB2.10000.28")
 batchMeta_MyFullOnly = TestMyFullOnly[,c("Tranche Batch","Plate Batch")]
 # KNN4 <- KNNtest(MyFullOnly,batchMeta_MyFullOnly,3,2)
 
-PlotPCA(MyFullOnly,batchMeta_MyFullOnly,3,1,"PCA on combined my full norm")  ###PCA and UMAP plot
-PlotPCA(MyFullOnly,batchMeta_MyFullOnly,3,2,"PCA on combined my full norm")
-PlotUmap(MyFullOnly,batchMeta_MyFullOnly,1,"UMAP on combined my full norm")
-PlotUmap(MyFullOnly,batchMeta_MyFullOnly,2,"UMAP on combined my full norm")
+gp13 <- PlotPCA(MyFullOnly,batchMeta_MyFullOnly,3,1,"PCA on combined my full norm")  ###PCA and UMAP plot
+gp14 <- PlotPCA(MyFullOnly,batchMeta_MyFullOnly,3,2,"PCA on combined my full norm")
+gp15 <- PlotUmap(MyFullOnly,batchMeta_MyFullOnly,1,"UMAP on combined my full norm")
+gp16 <- PlotUmap(MyFullOnly,batchMeta_MyFullOnly,2,"UMAP on combined my full norm")
 
 CVlist4 <- CVbreak(MySoma1Full,MySoma2Full,"OA",MyFullOnly,"combined my full norm")
 accrossPlateCV4 <- CVlist4[[1]] 
@@ -206,10 +207,10 @@ combat_MySomaFull <- TestMyFullCombat[,which(colnames(TestMyFullCombat)=="CRYBB2
 batchMeta_MySomaFul = TestMyFullCombat[,c("Tranche Batch","Plate Batch")]
 # KNN5<- KNNtest(combat_MySomaFull,batchMeta_MySomaFul,3,2)
 
-PlotPCA(combat_MySomaFull,batchMeta_MySomaFul,3,1,"PCA on combat_MySomaFul")
-PlotPCA(combat_MySomaFull,batchMeta_MySomaFul,3,2,"PCA on combat_MySomaFul")
-PlotUmap(combat_MySomaFull,batchMeta_MySomaFul,1,"UMAP on combat_MySomaFul")
-PlotUmap(combat_MySomaFull,batchMeta_MySomaFul,2,"UMAP on combat_MySomaFul")
+gp17 <- PlotPCA(combat_MySomaFull,batchMeta_MySomaFul,3,1,"PCA on combat_MySomaFul")
+gp18 <- PlotPCA(combat_MySomaFull,batchMeta_MySomaFul,3,2,"PCA on combat_MySomaFul")
+gp19 <- PlotUmap(combat_MySomaFull,batchMeta_MySomaFul,1,"UMAP on combat_MySomaFul")
+gp20 <- PlotUmap(combat_MySomaFull,batchMeta_MySomaFul,2,"UMAP on combat_MySomaFul")
 
 CVlist5 <- CVbreak(MySoma1Full,MySoma2Full,"OA",combat_MySomaFull,"combat_MySomaFul")
 accrossPlateCV5 <- CVlist5[[1]] 
@@ -219,14 +220,15 @@ withinTrancheCV5 <- CVlist5[[4]]
 # CVlist5 <- CVbreak(MySoma1Full,MySoma2Full,"INJ",combat_MySomaFull,"combat_MySomaFul")
 
 print("combat_MySomaFul accuracy against external controls")
-cutMySoma1Full = MySoma1Full[which(grepl("Sample",MySoma1Full[,"SampleType"])),1:(which(colnames(MySoma1Full)=="CRYBB2.10000.28")-1)]
-exOA5 <- ExtVal(cbind(cutMySoma1Full,exp(combat_MySomaFull[1:nrow(cutMySoma1Full),])),"OA",clinicFile,immunoFile)
-exINJ5 <- ExtVal(cbind(cutMySoma1Full,exp(combat_MySomaFull[1:nrow(cutMySoma1Full),])),"INJ",clinicFile,immunoFile)
+exOA5 <-  ExtVal(extractTrancheX(MySoma1Full,combat_MySomaFull,1),"OA",clinicFile,immunoFile)
+exINJ5 <- ExtVal(extractTrancheX(MySoma1Full,combat_MySomaFull,1),"INJ",clinicFile,immunoFile)
 
-VarOA5 <- VarExp("OA",cbind(cutMySoma1Full,exp(combat_MySomaFull[1:nrow(cutMySoma1Full),])),"MySoma1Full+combat")
+VarOA5 <- VarExp("OA",extractTrancheX(MySoma1Full,combat_MySomaFull,1),"MySoma1Full+combat")
 R2repeats(VarOA5,exOA5,"OA","MySoma1Full+combat")
-VarINJ5 <- VarExp("INJ",cbind(cutMySoma1Full,exp(combat_MySomaFull[1:nrow(cutMySoma1Full),])),"MySoma1Full+combat")
+VarINJ5 <- VarExp("INJ",extractTrancheX(MySoma1Full,combat_MySomaFull,1),"MySoma1Full+combat")
 R2repeats(VarINJ5,exINJ5,"INJ","MySoma1Full+combat")
+# VarOA5 <- VarExp("OA",extractTrancheX(MySoma2Full,combat_MySomaFull,2),"MySoma1Full+combat")
+# VarINJ5 <- VarExp("INJ",extractTrancheX(MySoma2Full,combat_MySomaFull,2),"MySoma1Full+combat")
 
 # 6. Darryl norm (i.e. SomaLogic’s new normalization). Combine somalogic normliased two tranches data for batch test.
 TestSomaOnly <- MyCombat(Soma1,Soma2,1)
@@ -234,10 +236,10 @@ SomaOnly = TestSomaOnly[,which(colnames(TestSomaOnly)=="CRYBB2.10000.28"):ncol(T
 batchMeta_SomaOnly = TestSomaOnly[,c("Tranche Batch","Plate Batch")]
 # KNN6 <- KNNtest(SomaOnly,batchMeta_SomaOnly,3,2)
 
-PlotPCA(SomaOnly,batchMeta_SomaOnly,3,1,"PCA on combined Soma Only")
-PlotPCA(SomaOnly,batchMeta_SomaOnly,3,2,"PCA on combined Soma Only")
-PlotUmap(SomaOnly,batchMeta_SomaOnly,1,"UMAP on combined Soma Only")
-PlotUmap(SomaOnly,batchMeta_SomaOnly,2,"UMAP on combined Soma Only")
+gp21 <- PlotPCA(SomaOnly,batchMeta_SomaOnly,3,1,"PCA on combined Soma Only")
+gp22 <- PlotPCA(SomaOnly,batchMeta_SomaOnly,3,2,"PCA on combined Soma Only")
+gp23 <- PlotUmap(SomaOnly,batchMeta_SomaOnly,1,"UMAP on combined Soma Only")
+gp24 <- PlotUmap(SomaOnly,batchMeta_SomaOnly,2,"UMAP on combined Soma Only")
 
 CVList6 <- CVbreak(Soma1,Soma2,"OA",SomaOnly,"combined Soma Only")
 accrossPlateCV6 <- CVlist6[[1]] 
@@ -261,10 +263,10 @@ combat_Soma = TestSomaCombat[,which(colnames(TestSomaCombat)=="CRYBB2.10000.28")
 batchMeta_Soma = TestSomaCombat[,c("Tranche Batch","Plate Batch")]
 # KNN7 <- KNNtest(combat_Soma,batchMeta_Soma,3,2)
 
-PlotPCA(combat_Soma,batchMeta_Soma,3,1,"PCA on combat_Soma")
-PlotPCA(combat_Soma,batchMeta_Soma,3,2,"PCA on combat_Soma")
-PlotUmap(combat_Soma,batchMeta_Soma,1,"UMAP on combat_Soma")
-PlotUmap(combat_Soma,batchMeta_Soma,2,"UMAP on combat_Soma")
+gp25 <- PlotPCA(combat_Soma,batchMeta_Soma,3,1,"PCA on combat_Soma")
+gp26 <- PlotPCA(combat_Soma,batchMeta_Soma,3,2,"PCA on combat_Soma")
+gp27 <- PlotUmap(combat_Soma,batchMeta_Soma,1,"UMAP on combat_Soma")
+gp28 <- PlotUmap(combat_Soma,batchMeta_Soma,2,"UMAP on combat_Soma")
 
 CVlist7 <- CVbreak(Soma1,Soma2,"OA",combat_Soma,"combat_Soma")
 accrossPlateCV7 <- CVlist7[[1]] 
@@ -341,14 +343,15 @@ R2repeats(VarINJ7,exINJ7,"INJ","Soma1+combat")
 # Darryl norm + ComBat: combat_Soma is the expression profile by further combatted on SomaOnly.
 # note that: combined data sets and combatted data sets only include human samples and human proteins.
 
-normList = list("RawM1"=RawM1,"RawM2"=RawM2,"TestRaw"=TestRaw,"KNN1"=KNN1,
-                "MySoma1Hyb"=MySoma1Hyb,"MySoma2Hyb"=MySoma2Hyb,"TestHyb"=TestHyb,"KNN2"=KNN2, 
-                "TestHybCombat"=TestHybCombat,"KNN3"=KNN3,
-                "MySoma1Full"=MySoma1Full,"MySoma2Full"=MySoma2Full,"TestMyFullOnly"=TestMyFullOnly,"KNN4"=KNN4,
-                "TestMyFullCombat"=TestMyFullCombat,"KNN5"=KNN5,
-                "Soma1"=Soma1,"Soma2"=Soma2,"TestSomaOnly"=TestSomaOnly,"KNN6"=KNN6,
-                "TestSomaCombat"=TestSomaCombat,"KNN7"=KNN7)
-saveRDS(normList,file="normList.rds")
+# normList = list("RawM1"=RawM1,"RawM2"=RawM2,"TestRaw"=TestRaw,"KNN1"=KNN1,
+#                 "MySoma1Hyb"=MySoma1Hyb,"MySoma2Hyb"=MySoma2Hyb,"TestHyb"=TestHyb,"KNN2"=KNN2, 
+#                 "TestHybCombat"=TestHybCombat,"KNN3"=KNN3,
+#                 "MySoma1Full"=MySoma1Full,"MySoma2Full"=MySoma2Full,"TestMyFullOnly"=TestMyFullOnly,"KNN4"=KNN4,
+#                 "TestMyFullCombat"=TestMyFullCombat,"KNN5"=KNN5,
+#                 "Soma1"=Soma1,"Soma2"=Soma2,"TestSomaOnly"=TestSomaOnly,"KNN6"=KNN6,
+#                 "TestSomaCombat"=TestSomaCombat,"KNN7"=KNN7)
+# saveRDS(normList,file="normList.rds")
+save(gp1,gp2,gp3,gp4,gp5,gp6,gp7,gp8,gp9,gp10,gp11,gp12,gp13,gp14,gp15,gp16,gp17,gp18,gp19,gp20,gp21,gp22,gp23,gp24,gp25,gp26,gp27,gp28,file="myNormCompPlot.RData")
 
 
 ### plot external check among all normalisation choices.
@@ -376,4 +379,27 @@ ggplot(data = CorDatP) + geom_line(aes(x=CorC,y=as.numeric(CorDatY),group=CorDat
   xlab("Normalisations") + ylab("Correlation coefficient") +labs(color = "SomaName") + scale_x_discrete(breaks=seq(1:7),labels=xlabels) +
   theme(axis.text.x = element_text(size=6, angle=20),legend.title =element_text(size = 6), legend.text = element_text(size = 6),plot.title=element_text(size = 10,face="bold",hjust=0.5),
         axis.title.y =element_text(size=8),axis.title.x =element_text(size=8))
+
+VarExp("OA",TestRaw,"Combined raw two tranches for OA group")
+VarExp("OA",TestHyb,"Combined hybnormed two tranches for OA group")
+VarExp("OA",TestHybCombat,"Combined hybnormed and further combat corrected two tranches for OA group")
+VarExp("OA",TestMyFullOnly,"Combined ful normed two tranches for OA group")
+VarExp("OA",TestMyFullCombat,"Combined ful normed and further combat corrected two tranches for OA group")
+VarExp("OA",TestSomaOnly,"Combined somologic normliased two tranches for OA group")
+VarExp("OA",TestSomaCombat,"Combined somologic normliased and further combat corrected two tranches for OA group")
+
+VarExp("INJ",TestRaw,"Combined raw two tranches for injury group")
+VarExp("INJ",TestHyb,"Combined hybnormed two tranches for injury group")
+VarExp("INJ",TestHybCombat,"Combined hybnormed and further combat corrected two tranches for injury group")
+VarExp("INJ",TestMyFullOnly,"Combined ful normed two tranches for injury group")
+VarExp("INJ",TestMyFullCombat,"Combined ful normed and further combat corrected two tranches for injury group")
+VarExp("INJ",TestSomaOnly,"Combined somologic normliased two tranches for injury group")
+VarExp("INJ",TestSomaCombat,"Combined somologic normliased and further combat corrected two tranches for injury group")
+
+
+
+
+
+
+
 
