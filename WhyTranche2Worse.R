@@ -88,8 +88,8 @@ PlotUmap(RFUresource[[Dd]][,which(DilutionKeep==Dilx[Dk])],batchResource[[Dd]],1
 
 ###b) cutting off highly expressed proteins
 totalPro = colSums(RFUresource[[Dd]])
-# exProId = totalPro>(mean(totalPro)+2*sd(totalPro)) ### define protein to be exluded by mean+2*sd of total expression level for each protein
-exProId = totalPro>(mean(totalPro)+2*sd(totalPro)) | totalPro<(mean(totalPro)-2*sd(totalPro))  ### define protein to be exluded by mean+2*sd of total expression level for each protein
+exProId = totalPro>(mean(totalPro)+2*sd(totalPro)) ### define protein to be exluded by mean+2*sd of total expression level for each protein
+#exProId = totalPro>(mean(totalPro)+2*sd(totalPro)) | totalPro<(mean(totalPro)-2*sd(totalPro))  ### define protein to be exluded by mean+2*sd of total expression level for each protein
 ProKeep = RFUresource[[Dd]][,!exProId] ### proteins to keep for plot
 
 ### PCA/UMAP 
@@ -174,10 +174,10 @@ hist((Full2mean-Full1mean)/Full1mean)
 ### Soma Nomr: Soma1 vs Soma2
 Soma1mean <- meanShiftDis(Soma1,Soma2,"OA POOL")[[1]]
 Soma2mean <- meanShiftDis(Soma1,Soma2,"OA POOL")[[2]]
-hist((Full2mean-Full1mean)/Full1mean)
+hist((Soma2mean-Soma1mean)/Soma1mean)
 Soma1mean <- meanShiftDis(Soma1,Soma2,"INJ POOL")[[1]]
 Soma2mean <- meanShiftDis(Soma1,Soma2,"INJ POOL")[[2]]
-hist((Full2mean-Full1mean)/Full1mean)
+hist((Soma2mean-Soma1mean)/Soma1mean)
 
 # f) freshly treated OA pool 
 ### freshly treated OA pool vs pre treated OA pool within tranche2
@@ -195,7 +195,9 @@ hist((meanOA1-meanOA2)/meanOA2)
 # ClinicMeta1 <- ExtractClinicG(RawM1,clinicFile1,1)
 # ClinicMeta2 <- ExtractClinicG(RawM2,clinicFile2,2)
 ClinicMeta <- rbind(ClinicMeta1,ClinicMeta2)
+# MetaWhole <- cbind(ClinicMeta,rbind(RawM1[,-(23:24)],RawM2[,-(23:25)]))
 ### ClinicMeta has the same row order as RawM1 and RawM2, but not definitely the same as MySoma and Soma
+### MetaWhole: most comprehensive meta data frame up to date 26 OCT 2021. Using self written function: ExtractClinicG + addCLinicMeta, make sure the order of combined meta have consistency.
 
 ### combine CLinicMeta to combined and combat corrected RFU frames. Pay attention to the row order for each clinicMeta info combination.
 ClinicRFU <- addCLinicMeta(ClinicMeta,FrameResource[[Dd]])
@@ -212,7 +214,6 @@ hist((meanRFU2-meanRFU1)/meanRFU1)
 #Investigate plate-based covariates to see what drives the difference between plates within tranche 2;
 # - Date of run
 # - Scanner ID
-### ClinicRFU: most comprehensive meta data frame up to date 26 OCT 2021. Using self written function: ExtractClinicG + addCLinicMeta, make sure the order of combined meta have consistency.
 ClinicRFU <- addCLinicMeta(ClinicMeta2,RawM2)
 RFUdone <- filterHM2(ClinicRFU)[[1]]
 clinicMetaDone <- filterHM2(ClinicRFU)[[2]]
@@ -256,6 +257,21 @@ similairyKmHc <- mclust::adjustedRandIndex(ClinicRFU$PlateID,ClinicRFU$ScannerID
 similairyKmHc <- mclust::adjustedRandIndex(ClinicRFU$PlateID,ClinicRFU$diseaseGroup)
 similairyKmHc
 
+library(ggridges)
+MySomaShift = Full2mean/Full1mean
+SomaShift = Soma1mean/Soma2mean
+plotMean = data.frame(t(rbind(c(rep("MySomaShift",length(MySomaShift)),rep("SomaShift",length(SomaShift))),
+                              c(MySomaShift,SomaShift),seq(1:(length(MySomaShift)+length(SomaShift))))))
+colnames(plotMean)=c("Type","Expression","seqID")
+ggplot(plotMean, aes(x = as.numeric(Expression), y = Type)) +
+  geom_density_ridges() +
+  theme_ridges() + 
+  theme(legend.position = "none")
 
+sPlate <- unique(MetaWhole$PlateId)[[7]]
+sPlateFrame <- MetaWhole[which(MetaWhole$PlateId==sPlate),]
+sPlatePlot <- cbind(rep(1:12,each=8),rep(1:8,12),sPlateFrame[,1:24])
+colnames(sPlatePlot)[1:2] <-c("y","x")
 
-
+ggplot(sPlatePlot, aes(x = x, y = y)) + 
+  geom_point(aes(color = Corhort), alpha = 0.5,size=14) 
