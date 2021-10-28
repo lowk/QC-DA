@@ -15,6 +15,15 @@ filterHM <- function(MyRFU){
   return(MyRFUDone)
 }
 
+### filter input RFU whole frame, output frame with only human protein and human samples.
+filterHM2 <- function(MyRFU){
+  MyRFU1 <- MyRFU[which(grepl("Sample",MyRFU[,"SampleType"])),]
+  MyRFU2 <- MyRFU1[,which(colnames(MyRFU1)=="CRYBB2.10000.28"):ncol(MyRFU1)]
+  MyRFUDone <- MyRFU2[,which(!grepl("HybControlElution|Non|Spuriomer",colnames(MyRFU2)))]
+  ClinicMetaDone <- MyRFU[which(grepl("Sample",MyRFU[,"SampleType"])),1:(which(colnames(MyRFU)=="CRYBB2.10000.28")-1)]
+  return(list(MyRFUDone,ClinicMetaDone))
+}
+
 ### get plate batch
 GetPlateBatch <- function(MySomaPlate){
   plates <- levels(as.factor(MySomaPlate))
@@ -527,11 +536,19 @@ ExtractClinicG = function(RawM,inputfile,trancheT){
   ### up to here integrate disease group type into RawM, RawM$SampleType including Pool type, disease sample type
   stepupIDTRaw[stepupIDTRaw == "STEP1409F-V1-HT1"] <- "STEP1409-F-V1-HT1"
   
-  BioMeta = cbind(RawM$PlateId,stepupIDTRaw,GroupTRawM,CohortTRawM,bloodStainTRawM,sampleAgeTRaw,patientGenderTRaw,patientAgeTRaw)
-  colnames(BioMeta)[1:2] = c("PlateID","STEpUPID")
-  rownames(BioMeta) = rownames(RawM)
+  ClinicMeta = cbind(RawM$PlateId,stepupIDTRaw,GroupTRawM,CohortTRawM,bloodStainTRawM,sampleAgeTRaw,patientGenderTRaw,patientAgeTRaw)
+  colnames(ClinicMeta)[1:2] = c("PlateID","STEpUPID")
+  rownames(ClinicMeta) = rownames(RawM)
   
-  return(BioMeta) 
+  return(ClinicMeta) 
+}
+
+### combine clinic meta information to RFU frame (with whole row meta information from adat file)
+addCLinicMeta <- function(ClinicMeta,RFUframe){
+  rowOrder = vector("integer", length=nrow(RFUframe))
+  for(i in 1:nrow(RFUframe)){rowOrder[i] = which(rownames(ClinicMeta)==rownames(RFUframe)[i])}
+  ClinicRFU = cbind(ClinicMeta[rowOrder,],RFUframe)
+  return(ClinicRFU)
 }
 
 ### k batch for KNN testing: input expression data and batch matrix, return rejection rate matrix
@@ -662,8 +679,6 @@ initQCnorm <- function(RawDatFile,ReferenceDatFile){
       if(slineL[getStartTerm]=="EntrezGeneSymbol"){ EntrezGeneSymbol <<- slineL[getStartId:length(slineL)]}
       if(slineL[getStartTerm]=="Type"){Type <<- slineL[getStartId:length(slineL)]}
       if(slineL[getStartTerm]=="Dilution"){Dilution <<- slineL[getStartId:length(slineL)]}
-      # if(slineL[getStartTerm]=="medNormRefSMP_ReferenceRFU"){
-      #   medNormRefSMP <<- as.numeric(slineL[getStartId:length(slineL)])
       if(slineL[getStartTerm]=="PlateScale_Reference"){
         PlateScale_Reference <<- as.numeric(slineL[getStartId:length(slineL)])
         
@@ -730,7 +745,7 @@ PlotPCA <- function(exprDat,BatchMeta,topPC,confounderC,titleMessage){
                 diag=list(continuous=wrap("densityDiag",alpha=0.4)),
                 lower=list(continuous = wrap("points",alpha=0.9,size=0.1)),
                 upper = list(continuous = "blank"),
-                legend = c(1,1)) + labs(fill = colnames(BatchMeta)[confounderC])
+                legend = c(1,1)) + labs(fill = colnames(BatchMeta)[confounderC],theme(legend.title=element_text(size=18),legend.text=element_text(size=18),axis.title=element_text(size=18,face="bold")))
   return(gp)
 }
 
@@ -817,7 +832,7 @@ CVbreak <- function(RFU1,RFU2,clinicType,exprDat,titleMessage){
 
 ### toTest1,toTest2 are biomarker lists from sandwich file (immunoFile) and adat file. clnicFile: extract STEPId and metching clinic meta data
 ExtVal <- function(exprDatM,clinicType,clinicFile,immunoFile){
-### extract clinic meta data such as disease group, cohort ...  
+  ### extract clinic meta data such as disease group, cohort ...  
   metadata_xls <- read_excel(clinicFile)
   temp <- data.frame(as.matrix(metadata_xls)[-1,1:17])
   names(temp) <- as.matrix(metadata_xls)[1,1:17]
@@ -849,7 +864,7 @@ ExtVal <- function(exprDatM,clinicType,clinicFile,immunoFile){
   
   CorData_norm = data.frame(matrix(NA,nrow=length(toTest1),ncol=5))
   names(CorData_norm) <- c("SandwichName","SomaName","cor","Pvalue","N")
-
+  
   temp3 <- sandwich_master[as.character(metadata_reord$`STEpUP Participant Identification Number (PIN)`),]
   temp4 <- exprDat_norm[!is.na(temp3[,1]),]
   temp3 = temp3[!is.na(temp3[,1]),]
@@ -894,7 +909,7 @@ R2repeats = function(R2_norm,CorData_norm,clinicType,titleMessage){
 }
 
 ### after combat, extract corresponding data for a certain tranche
-### RFU is the original tranche data, combineRFU is the data only parts of combined RFUs, whichTranche =1 or 2. 
+### RFU is the single tranche data before "MyCombat". combineRFU is the data only parts of combined RFUs, whichTranche =1 or 2. 
 ### output extractedRFU is the processed RFUs corresponding to input RFU, extractedRFU inlcludes the RFU data parts together with meta data.
 extractTrancheX <- function(RFU,CombinedRFU,whichTranche){
   cutCombined = RFU[which(grepl("Sample",RFU[,"SampleType"])),1:(which(colnames(RFU)=="CRYBB2.10000.28")-1)] 
@@ -903,3 +918,34 @@ extractTrancheX <- function(RFU,CombinedRFU,whichTranche){
   return(extractedRFU)
 }
 
+
+### meanshift between two RFUs
+meanShift <- function(RFU1,RFU2,TypeInterest){
+  meanRFU1 = colMeans(RFU1[grepl(TypeInterest,RFU1$SampleType),which(colnames(RFU1)=="CRYBB2.10000.28"):ncol(RFU1)])
+  meanRFU2 = colMeans(RFU2[grepl(TypeInterest,RFU2$SampleType),which(colnames(RFU2)=="CRYBB2.10000.28"):ncol(RFU2)])
+  return(list(meanRFU1,meanRFU2))
+}
+meanShiftDis <- function(RFU1,RFU2,TypeInterest){
+  meanRFU1 = colMeans(RFU1[grepl(TypeInterest,RFU1$SampleId),which(colnames(RFU1)=="CRYBB2.10000.28"):ncol(RFU1)])
+  if(TypeInterest =="OA POOL"){meanRFU2 = colMeans(RFU2[grepl(TypeInterest,RFU2$SampleId) & RFU2$SampleId!="OA POOL-HT-26/29",which(colnames(RFU2)=="CRYBB2.10000.28"):ncol(RFU2)])}
+  else{meanRFU2 = colMeans(RFU2[grepl(TypeInterest,RFU2$SampleId),which(colnames(RFU2)=="CRYBB2.10000.28"):ncol(RFU2)])}
+  return(list(meanRFU1,meanRFU2))
+}
+
+### meanshift for OA/injury samples between two tranches. ClinicRFU: RFU dataframe combined with clinic meta information from clinical files
+meanShiftClinic <- function(ClinicRFU,DiseaseType){
+  
+  ClinicRFUDis <- ClinicRFU[which(ClinicRFU$diseaseGroup == DiseaseType),]
+  ### extract OA/injury records in tranche 1: RFU1 and in tranche2: RFU2; only include human samples
+  RFU1p <- ClinicRFUDis[which(ClinicRFUDis$`Tranche Batch`== 1),]
+  RFU1pp <- RFU1p[RFU1p$SampleType=="Sample",which(colnames(RFU1p)=="CRYBB2.10000.28"):ncol(RFU1p)]
+  RFU1 <- RFU1pp[,!grepl("HybControlElution|Non|Spuriomer",colnames(RFU1pp))]
+  meanRFU1 <- colMeans(RFU1)
+  
+  RFU2p <- ClinicRFUDis[which(ClinicRFUDis$`Tranche Batch`== 2),]
+  RFU2pp <- RFU2p[RFU2p$SampleType=="Sample",which(colnames(RFU2p)=="CRYBB2.10000.28"):ncol(RFU2p)]
+  RFU2 <- RFU2pp[,!grepl("HybControlElution|Non|Spuriomer",colnames(RFU2pp))]
+  meanRFU2 <- colMeans(RFU2)
+  
+  return(list(meanRFU1,meanRFU2))
+}
