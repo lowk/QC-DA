@@ -16,6 +16,38 @@
 # TestSomaOnly = normList$TestSomaOnly
 # TestSomaCombat = normList$TestSomaCombat
 
+library(readxl) 
+library(SomaDataIO)
+source("QCnormTranche2.R")
+library(sva)
+library(umap)
+library(GGally)
+library(factoextra)
+
+load("Luke2021.10.28.RData")
+
+### retrieve pure data block and batch meta data from stored data frame as rds 
+CombinedRaw = TestRaw[,which(colnames(TestRaw)=="CRYBB2.10000.28"):ncol(TestRaw)] ###combined expression data
+batchMeta_Raw = TestRaw[,c("Tranche Batch","Plate Batch")]
+
+CombinedHyb = TestHyb[,which(colnames(TestHyb)=="CRYBB2.10000.28"):ncol(TestHyb)] 
+batchMeta_HybOnly = TestHyb[,c("Tranche Batch","Plate Batch")]
+
+combat_MySomaHyb <- TestHybCombat[,which(colnames(TestHybCombat)=="CRYBB2.10000.28"):ncol(TestHybCombat)]
+batchMeta_MySomaHyb = TestHybCombat[,c("Tranche Batch","Plate Batch")]
+
+MyFullOnly <- TestMyFullOnly[,which(colnames(TestMyFullOnly)=="CRYBB2.10000.28"):ncol(TestMyFullOnly)] 
+batchMeta_MyFullOnly = TestMyFullOnly[,c("Tranche Batch","Plate Batch")]
+
+combat_MySomaFull <- TestMyFullCombat[,which(colnames(TestMyFullCombat)=="CRYBB2.10000.28"):ncol(TestMyFullCombat)] 
+batchMeta_MySomaFul = TestMyFullCombat[,c("Tranche Batch","Plate Batch")]
+
+SomaOnly = TestSomaOnly[,which(colnames(TestSomaOnly)=="CRYBB2.10000.28"):ncol(TestSomaOnly)] 
+batchMeta_SomaOnly = TestSomaOnly[,c("Tranche Batch","Plate Batch")]
+
+combat_Soma = TestSomaCombat[,which(colnames(TestSomaCombat)=="CRYBB2.10000.28"):ncol(TestSomaCombat)]  
+batchMeta_Soma = TestSomaCombat[,c("Tranche Batch","Plate Batch")]
+
 ### set variables Dd and Dk, for the convenience of analysis of different combinations of RFU resources and Dilution group.
 Dd=1 ### different RFU resources: 1:7, which are 
 # Raw data: RawM1,RawM2, CombinedRaw is the combined raw data.
@@ -26,12 +58,11 @@ Dd=1 ### different RFU resources: 1:7, which are
 # Darryl norm: Daryyl normliased: Soma1,Soma2; SomaOnly is the expression profile of combined Soma1 and Soma2.
 # Darryl norm + ComBat: combat_Soma is the expression profile by further combatted on SomaOnly.
 
-Dk=1 ### different dilution concentration group 1:3
-
 # Redo the PCA and UMAP stratifying proteins by:
 #   a) dilution group
 
 startDatId = which(colnames(RawM1)=="CRYBB2.10000.28")
+Dilution = as.matrix(attributes(RawM1)$Col.Meta[,"Dilution"])
 keepCol = which(!grepl("HybControlElution|Non|Spuriomer",colnames(RawM1)[startDatId:ncol(RawM1)]))
 DilutionKeep = Dilution[keepCol] ### Dilution is from Col_Meta, need to exclude non human protein
 Dilx = unique(DilutionKeep) ### pay attention, unique, levels(as.factor), change the col order
@@ -44,6 +75,8 @@ batchResource = list(batchMeta_Raw,batchMeta_HybOnly,combat_MySomaHyb,batchMeta_
 titleMessage = c("Raw combined RFU", "Hyb combined RFU", "Hyb combined + Combat corrected RFU", "full normalised combined RFU",
                  "full normalised combined + Combat corrected", "Soma normliased combined RFU", "Soma normliased + Combat corrected RFU")
 
+
+Dk=1 ### different dilution concentration group 1:3
 
 ### PCA/UMAP plot based on the dilution group "Dk" from the RFUresource of "Dd"
 
@@ -67,8 +100,8 @@ PlotUmap(ProKeep,batchResource[[Dd]],1,paste("Excluding highly expressed protein
 PlotUmap(ProKeep,batchResource[[Dd]],2,paste("Excluding highly expressed proteins, UMAP on ", titleMessage[[Dd]])) 
 
 ###c) using the "strict" QC proteins
-strictList<- read.csv("/Users/ydeng/Documents/QCstepOA/normComp/protein_filters.txt",sep="\t") ### directly read in proteins pass strict filters
-strictPro <- strictList[which(strictList$inj_filter_status=="Pass"&strictList$oa_filter_status=="Pass"),1]
+# strictList<- read.csv("/Users/ydeng/Documents/QCstepOA/normComp/protein_filters.txt",sep="\t") ### directly read in proteins pass strict filters
+# strictPro <- strictList[which(strictList$inj_filter_status=="Pass"&strictList$oa_filter_status=="Pass"),1]
 strictRFU <- RFUresource[[Dd]][,strictPro]### RFU frames from each resource with strictly filtered proteins.
 
 ### PCA/UMAP 
@@ -157,10 +190,10 @@ meanOA2 = as.matrix(RawM2[which(RawM2$SampleId =="OA POOL-HT-26/29"),which(colna
 hist((meanOA1-meanOA2)/meanOA2)
 
 ###d) oa samples; e) injury samples
-clinicFile1 <- "/Users/ydeng/Documents/QCstepOA/normComp/STEpUP_QCData_Tranche1.xlsx"
-clinicFile2 <- "/Users/ydeng/Documents/QCstepOA/normComp/STEpUP_QCData_Tranche2_09Mar2021.xlsx"  
-ClinicMeta1 <- ExtractClinicG(RawM1,clinicFile1,1)
-ClinicMeta2 <- ExtractClinicG(RawM2,clinicFile2,2)
+# clinicFile1 <- "/Users/ydeng/Documents/QCstepOA/normComp/STEpUP_QCData_Tranche1.xlsx"
+# clinicFile2 <- "/Users/ydeng/Documents/QCstepOA/normComp/STEpUP_QCData_Tranche2_09Mar2021.xlsx"  
+# ClinicMeta1 <- ExtractClinicG(RawM1,clinicFile1,1)
+# ClinicMeta2 <- ExtractClinicG(RawM2,clinicFile2,2)
 ClinicMeta <- rbind(ClinicMeta1,ClinicMeta2)
 ### ClinicMeta has the same row order as RawM1 and RawM2, but not definitely the same as MySoma and Soma
 
@@ -179,6 +212,7 @@ hist((meanRFU2-meanRFU1)/meanRFU1)
 #Investigate plate-based covariates to see what drives the difference between plates within tranche 2;
 # - Date of run
 # - Scanner ID
+### ClinicRFU: most comprehensive meta data frame up to date 26 OCT 2021. Using self written function: ExtractClinicG + addCLinicMeta, make sure the order of combined meta have consistency.
 ClinicRFU <- addCLinicMeta(ClinicMeta2,RawM2)
 RFUdone <- filterHM2(ClinicRFU)[[1]]
 clinicMetaDone <- filterHM2(ClinicRFU)[[2]]
@@ -199,6 +233,14 @@ ggpairs(PlotDat, columns=1:3, aes(color= as.factor(PlateRunDate)),
         upper = list(continuous = "blank"),
         legend = c(1,1)) + labs(fill = "Date of Run",theme(legend.title=element_text(size=18),legend.text=element_text(size=18),axis.title=element_text(size=18,face="bold")))
 
+ggpairs(PlotDat, columns=1:3, aes(color= as.factor(diseaseGroup)),
+        title= paste("RawM2 from ",titleMessage[[Dd]]),
+        diag=list(continuous=wrap("densityDiag",alpha=0.4)),
+        lower=list(continuous = wrap("points",alpha=0.9,size=0.1)),
+        upper = list(continuous = "blank"),
+        legend = c(1,1)) + labs(fill = "Date of Run",theme(legend.title=element_text(size=18),legend.text=element_text(size=18),axis.title=element_text(size=18,face="bold")))
+
+
 ### it is convenient to make plot PCA referring to any confounders included in PlotDat here.
 ### code is easy to check tranche1 data as well, just change the following one line
 ClinicRFU <- addCLinicMeta(ClinicMeta1,RawM1)
@@ -207,6 +249,12 @@ clinicMetaDone <- filterHM2(ClinicRFU)[[2]]
 pc_norm <- prcomp(as.matrix(RFUdone),scale = TRUE)
 PlotDat = data.frame(cbind(pc_norm$x[,1:3],clinicMetaDone))
 
+### plate batch effect of tranche2 reason:
+library(mclust)
+similairyKmHc <- mclust::adjustedRandIndex(ClinicRFU$PlateID,ClinicRFU$PlateRunDate)
+similairyKmHc <- mclust::adjustedRandIndex(ClinicRFU$PlateID,ClinicRFU$ScannerID)
+similairyKmHc <- mclust::adjustedRandIndex(ClinicRFU$PlateID,ClinicRFU$diseaseGroup)
+similairyKmHc
 
 
 
