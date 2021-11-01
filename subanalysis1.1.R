@@ -7,47 +7,72 @@ library(fpc)
 library(WGCNA)
 library(sparcl)
 library(diceR)
-source("callMe.R")
+source("callMe1.R")
+
+### read in csv data from S drive
+myPath <- "/Volumes/Shared/STEpUP OA/STEPUP_DAG_releases/STEPUP_DAG_rel001_final/"
+QCFrame <- read.csv(paste0(release_prefix,'clinical/discovery_QApheno_1.csv'))
+ClinicFrame1 <- read.csv(paste0(release_prefix,'clinical/discovery_DAPpheno_1.csv'))
+ClinicFrame2 <- read.csv(paste0(release_prefix,'clinical/discovery_DAPpheno_2.csv'))
+
+### adjust the ClinicFrame1, ClinicFrame2, QCFrame,consistent with the row order of SomaFrame
+### consider whether to include soma adata row names into the csv file
+QCFrame <- adjustFrame(QCFrame,SomaFrame)
+ClinicFrame1 <- adjustFrame(ClinicFrame1,SomaFrame)
+ClinicFrame2 <- adjustFrame(ClinicFrame2,SomaFrame)
+CombinedFrameTemp <- cbind(QCFrame,ClinicFrame1,ClinicFrame2,SomaFrame[which(SomaFrame$SampleId %in% QCFrame$sf_iknee_sample_id_number),])
+CombinedFrame <- CombinedFrameTemp[,unique(colnames(CombinedFrameTemp))]
+# startDatId = which(colnames(CombinedFrame)=="CRYBB2.10000.28") ### column where the RFU starts; col 1:startDatId-1 is the meta table
+
 
 # library(pvclust) ### consider which package best display dendrogram
 
 ### Perform all the analysis in OA injury groups separately, unless otherwise specified.
-load("sourceData.RData")
 
 # Calculate PCA
-### exclude none human samples and none human proteins
-MySoma1Done <- filterHM(MySoma1,BioMeta1)[[1]]
-MySoma2Done <- filterHM(MySoma2,BioMeta2)[[1]]
-BioMeta1Done <- data.frame(filterHM(MySoma1,BioMeta1)[[2]])
-BioMeta2Done <- data.frame(filterHM(MySoma2,BioMeta2)[[2]])
-tranche <- c(rep(1,nrow(MySoma1Done)),rep(2,nrow(MySoma2Done)))
-MySomaPlate <- as.matrix(c(MySoma1Done[,"PlateId"],MySoma2Done[,"PlateId"]),ncol=1)
-PlateBatch <- GetPlateBatch(MySomaPlate)
-BioMetaM <- data.frame(cbind((rbind(BioMeta1Done,BioMeta2Done)),tranche,PlateBatch))
+### Tom may not split the disease group like this, so just use the CombinedFrame
+exprDat = CombinedFrame[,which(colnames(CombinedFrame)=="CRYBB2.10000.28"):ncol(CombinedFrame)]
 
-MySomaRaw <- rbind(MySoma1[,c(1:13,25:ncol(MySoma1))],MySoma2[,c(1:13,26:ncol(MySoma2))])
-MySomaAll <- rbind(MySoma1Done[,c(1:13,25:ncol(MySoma1Done))],MySoma2Done[,c(1:13,26:ncol(MySoma2Done))])
-exprDat_normStore <- combat_all
-exprDat_normMr <- data.frame(cbind(BioMetaM,MySomaAll[,c(1:13)],exprDat_normStore)) 
-### exprDat_normStore: normalised and combatted proteomics for analysis. exprDat_normMr:proteomics together with meta data information
-
-clinicType="OA" ### select disease group, consider to write this to a function later.
-
-BioMeta = BioMetaM[which(BioMetaM$diseaseGroup==clinicType),]
-exprDat_normM <- exprDat_normMr[which(exprDat_normMr$diseaseGroup==clinicType),]
-calib_normM <- exprDat_normMr[grep(paste(clinic,"POOL"),exprDat_normMr$SampleId),]
-calib_norm <- as.matrix(calib_normM[,-c(1:(which(colnames(calib_normM)=="CRYBB2.10000.28")-1))])
-calibPlates <-  calib_normM$PlateId
-exprDat_norm <- exprDat_normM[,-c(1:(which(colnames(exprDat_normM)=="CRYBB2.10000.28")-1))]
-### exprDat_norm: normalised and combatted proteomics of a particular disease group.
-
-pc_norm <- prcomp(exprDat_normStore,scale = TRUE)
+pc_norm <- prcomp(exprDat,scale = TRUE)
 
 # Select top PCs
 ### get eigen values
 eig.val <- factoextra::get_eigenvalue(pc_norm) 
 topPC = which(eig.val$cumulative.variance.percent>80)[1]
 pcDat = pc_norm$x[,1:topPC]
+
+### set which label would like to be viewd in the PCA plot
+myLabel = CombinedFrame$sf_iknee_qc_group
+PlotDat = data.frame(cbind(pcDat,myLabel))
+
+numLabel = c(0,1,2,3)
+wordLabel = c("OA","Disease","RA","Control")
+for (ic in 1:length(numLabel)){
+  myLabel = gsub(numLabel[ic],wordLabel[ic],myLabel)  
+}
+PlotDat$myLabel = myLabel
+
+GGally::ggpairs(PlotDat, columns=1:3, aes(color= as.factor(myLabel)),
+                diag=list(continuous=wrap("densityDiag",alpha=0.4)),
+                lower=list(continuous = wrap("points",alpha=0.9,size=0.1)),
+                upper = list(continuous = "blank"),
+                legend = c(1,1)) + labs(fill = "Disease Group")
+
+myUmap = umap(pcDat)
+df <- data.frame(x = myUmap$layout[,1],
+                 y = myUmap$layout[,2],
+                 WhichBatch = factor(PlotDat$myLabel))
+colnames(df) = c("D1","D2",colnames("Disease Group"))
+ggplot(df, aes(x=D1, y=D2, color = df[,3])) + geom_point() + labs(title="Umap labelled by disease group",color="Disease Group") +
+  theme(plot.title=element_text(size=14,hjust=0.5),legend.text=element_text(size = 10), axis.title=element_text(size = 12)) 
+
+
+
+clinicType=0 ### select disease group
+
+exprDatFrame = CombinedFrame[CombinedFrame$sf_iknee_qc_group==clinicType,]
+exprDat = exprDatFrame[,which(colnames(CombinedFrame)=="CRYBB2.10000.28"):ncol(exprDatFrame)]
+### exprDat_norm: normalised and combatted proteomics of a particular disease group.
 
 # Calculate f(K) statistics, silhouette score, gap statistic and elbow methods, visualise them against cluster numbers.
 
@@ -77,7 +102,7 @@ factoextra::fviz_nbclust(pcDat, kmeans, method = "wss") +
 # Cluster top PCs using kmeans (with 10 random starts, i.e. nstart=10 argument)
 if(length(idK)>0){
   EndoLabelNbClust <- NbClust::NbClust(data = pcDat ,distance = "euclidean", min.nc = 2, max.nc = 15, 
-                              method = "kmeans", index = "all", alphaBeale = 0.1)$Best.partition
+                                       method = "kmeans", index = "all", alphaBeale = 0.1)$Best.partition
   thisk = length(unique(EndoLabelNbClust))
   kmeanStr <- kmeans(pcDat, thisk, iter.max = 50, nstart = 10) 
 }else{print("no significant underlying clusters are found")}
@@ -86,10 +111,10 @@ if(length(idK)>0){
 PlotDat = data.frame(cbind(pcDat,kmeanStr$cluster))
 colnames(PlotDat)[topPC+1]="EndoLabel"
 GGally::ggpairs(PlotDat, columns=1:3, aes(color= as.factor(EndoLabel)),
-        diag=list(continuous=wrap("densityDiag",alpha=0.4)),
-        lower=list(continuous = wrap("points",alpha=0.9,size=0.1)),
-        upper = list(continuous = "blank"),
-        legend = c(1,1)) + labs(fill = "EndoLabel")
+                diag=list(continuous=wrap("densityDiag",alpha=0.4)),
+                lower=list(continuous = wrap("points",alpha=0.9,size=0.1)),
+                upper = list(continuous = "blank"),
+                legend = c(1,1)) + labs(fill = "EndoLabel")
 
 M3C::umap(t(pcDat),labels=as.factor(kmeanStr$cluster),controlscale=TRUE,scale=3)
 
