@@ -75,7 +75,7 @@ batchResource = list(batchMeta_Raw,batchMeta_HybOnly,combat_MySomaHyb,batchMeta_
 titleMessage = c("Raw combined RFU", "Hyb combined RFU", "Hyb combined + Combat corrected RFU", "full normalised combined RFU",
                  "full normalised combined + Combat corrected", "Soma normliased combined RFU", "Soma normliased + Combat corrected RFU")
 
-
+### I have a question about this variable - LJD
 Dk=1 ### different dilution concentration group 1:3
 
 ### PCA/UMAP plot based on the dilution group "Dk" from the RFUresource of "Dd"
